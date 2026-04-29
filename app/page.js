@@ -14,6 +14,28 @@ function generateSessionId() {
   return Math.random().toString(36).substring(2, 10);
 }
 
+function MessageText({ text, isUser }) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return (
+    <>
+      {parts.map((part, i) =>
+        /https?:\/\/[^\s]+/.test(part) ? (
+          
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline break-all"
+            style={{ color: isUser ? "rgba(255,255,255,0.9)" : "#C9A96E" }}>{part}</a>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
 export default function Home() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -39,7 +61,6 @@ export default function Home() {
         }]);
       });
 
-    // Pusher 구독 — 직원 답변 수신
     const pusher = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
     });
@@ -48,12 +69,7 @@ export default function Home() {
     channel.bind("staff-reply", (data) => {
       setMessages((prev) => [
         ...prev,
-        {
-          id: Date.now(),
-          text: data.reply,
-          isUser: false,
-          isStaff: true,
-        },
+        { id: Date.now(), text: data.reply, isUser: false, isStaff: true },
       ]);
     });
 
@@ -103,7 +119,7 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-[#F5EFE6]" style={{ maxHeight: "100dvh" }}>
 
       {/* 헤더 */}
-      <div className="bg-[#C9A96E] px-4 py-3 flex items-center gap-3 flex-shrink-0 safe-top">
+      <div className="bg-[#C9A96E] px-4 py-3 flex items-center gap-3 flex-shrink-0">
         <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg">
           👑
         </div>
@@ -151,23 +167,11 @@ export default function Home() {
               {msg.isStaff && (
                 <div className="text-xs text-blue-500 font-medium mb-1">직원 답변</div>
               )}
-              {msg.text.split(/(https?:\/\/[^\s]+)/g).map((part, i) =>
-                /https?:\/\/[^\s]+/.test(part) ? (
-    
-                    key={i}
-                    href={part}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline break-all"
-                    style={{ color: msg.isUser ? "rgba(255,255,255,0.9)" : "#C9A96E" }}
-                  >
-                    {part}
-                  </a>
-                ) : (
-                  <span key={i}>{part}</span>
-                )
-              )}
- 
+              <MessageText text={msg.text} isUser={msg.isUser} />
+            </div>
+          </div>
+        ))}
+
         {loading && (
           <div className="flex justify-start">
             <div className="w-7 h-7 rounded-full bg-[#C9A96E] flex items-center justify-center text-sm mr-2 flex-shrink-0">
@@ -196,7 +200,7 @@ export default function Home() {
       </div>
 
       {/* 입력창 */}
-      <div className="px-3 py-3 flex gap-2 items-center bg-white flex-shrink-0 safe-bottom">
+      <div className="px-3 py-3 flex gap-2 items-center bg-white flex-shrink-0">
         <input
           type="text"
           value={input}
