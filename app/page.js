@@ -151,7 +151,22 @@ export default function Home() {
               {msg.isStaff && (
                 <div className="text-xs text-blue-500 font-medium mb-1">직원 답변</div>
               )}
-              {msg.text}
+              {msg.text.split(/(https?:\/\/[^\s]+)/g).map((part, i) =>
+                /https?:\/\/[^\s]+/.test(part) ? (
+    
+                    key={i}
+                    href={part}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline break-all"
+                    style={{ color: msg.isUser ? "rgba(255,255,255,0.9)" : "#C9A96E" }}
+                  >
+                    {part}
+                  </a>
+                ) : (
+                  <span key={i}>{part}</span>
+                )
+              )}
             </div>
           </div>
         ))}
