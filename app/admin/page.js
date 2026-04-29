@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import PusherClient from "pusher-js";
-import { supabase } from "@/lib/supabase";
 
 const CATEGORIES = ["전체", "예약/진료시간", "비용문의", "여성성형", "피부과", "증상문의", "기타"];
 
@@ -21,7 +20,6 @@ export default function AdminPage() {
   const [activeCategory, setActiveCategory] = useState("전체");
   const bottomRef = useRef(null);
 
-  // DB에서 기존 문의 불러오기
   useEffect(() => {
     const loadInquiries = async () => {
       const res = await fetch("/api/inquiries");
@@ -39,9 +37,7 @@ export default function AdminPage() {
           timestamp: i.created_at,
         })));
         const edits = {};
-        data.inquiries.forEach((i) => {
-          edits[i.session_id] = i.ai_draft;
-        });
+        data.inquiries.forEach((i) => { edits[i.session_id] = i.ai_draft; });
         setEditTexts(edits);
       }
     };
@@ -58,10 +54,7 @@ export default function AdminPage() {
     });
     const channel = pusher.subscribe("admin-channel");
     channel.bind("new-inquiry", (data) => {
-      setInquiries((prev) => [
-        ...prev,
-        { ...data, id: Date.now(), status: "pending" },
-      ]);
+      setInquiries((prev) => [...prev, { ...data, id: data.id || Date.now(), status: "pending" }]);
       setEditTexts((prev) => ({ ...prev, [data.sessionId]: data.aiDraft }));
     });
     return () => pusher.disconnect();
@@ -71,19 +64,20 @@ export default function AdminPage() {
     await fetch("/api/reply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionId: inquiry.sessionId,
-        reply: text,
-        inquiryId: inquiry.id,
-      }),
+      body: JSON.stringify({ sessionId: inquiry.sessionId, reply: text, inquiryId: inquiry.id }),
     });
     setInquiries((prev) =>
-      prev.map((i) =>
-        i.sessionId === inquiry.sessionId
-          ? { ...i, status: "replied", finalReply: text }
-          : i
-      )
+      prev.map((i) => i.id === inquiry.id ? { ...i, status: "replied", finalReply: text } : i)
     );
+  };
+
+  const deleteInquiry = async (inquiry) => {
+    await fetch("/api/inquiries", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: inquiry.id }),
+    });
+    setInquiries((prev) => prev.filter((i) => i.id !== inquiry.id));
   };
 
   const formatTime = (iso) => {
@@ -91,19 +85,15 @@ export default function AdminPage() {
     return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
   };
 
-  // 카테고리 필터 먼저 적용
   const categoryFiltered = activeCategory === "전체"
     ? inquiries
     : inquiries.filter((i) => i.category === activeCategory);
 
-  // 그 다음 탭 필터
   const staffInquiries = categoryFiltered.filter((i) => i.isStaffRequired);
   const allInquiries = categoryFiltered;
-
   const displayInquiries = activeTab === "staff" ? staffInquiries : allInquiries;
   const pendingCount = inquiries.filter((i) => i.isStaffRequired && i.status === "pending").length;
 
-  // 카테고리별 전체 건수 (탭 무관)
   const categoryCounts = CATEGORIES.reduce((acc, cat) => {
     acc[cat] = cat === "전체"
       ? inquiries.length
@@ -128,7 +118,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* 카테고리 필터 — 최상단 */}
+      {/* 카테고리 필터 */}
       <div className="bg-white border-b border-gray-100 px-3 py-2 flex gap-2 overflow-x-auto sticky top-[52px] z-10">
         {CATEGORIES.map((cat) => (
           <button
@@ -150,14 +140,12 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {/* 탭 — 카테고리 아래 */}
+      {/* 탭 */}
       <div className="flex border-b border-gray-200 bg-white sticky top-[93px] z-10">
         <button
           onClick={() => setActiveTab("staff")}
           className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
-            activeTab === "staff"
-              ? "border-[#C9A96E] text-[#C9A96E]"
-              : "border-transparent text-gray-400"
+            activeTab === "staff" ? "border-[#C9A96E] text-[#C9A96E]" : "border-transparent text-gray-400"
           }`}
         >
           직원 확인 필요
@@ -170,9 +158,7 @@ export default function AdminPage() {
         <button
           onClick={() => setActiveTab("all")}
           className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
-            activeTab === "all"
-              ? "border-[#C9A96E] text-[#C9A96E]"
-              : "border-transparent text-gray-400"
+            activeTab === "all" ? "border-[#C9A96E] text-[#C9A96E]" : "border-transparent text-gray-400"
           }`}
         >
           전체 문의
@@ -187,14 +173,10 @@ export default function AdminPage() {
         {/* 문의 없을 때 */}
         {displayInquiries.length === 0 && (
           <div className="text-center py-20 text-gray-400">
-            <div className="text-4xl mb-3">
-              {activeTab === "staff" ? "✅" : "💬"}
-            </div>
+            <div className="text-4xl mb-3">{activeTab === "staff" ? "✅" : "💬"}</div>
             <div className="text-sm">
-              {activeTab === "staff"
-                ? "확인이 필요한 문의가 없습니다"
-                : activeCategory !== "전체"
-                ? `${activeCategory} 문의가 없습니다`
+              {activeTab === "staff" ? "확인이 필요한 문의가 없습니다"
+                : activeCategory !== "전체" ? `${activeCategory} 문의가 없습니다`
                 : "아직 문의가 없습니다"}
             </div>
           </div>
@@ -206,11 +188,9 @@ export default function AdminPage() {
             <div
               key={inquiry.id}
               className={`bg-white rounded-2xl shadow-sm overflow-hidden border ${
-                inquiry.status === "replied"
-                  ? "border-green-200"
-                  : inquiry.isStaffRequired
-                  ? "border-amber-300"
-                  : "border-gray-100"
+                inquiry.status === "replied" ? "border-green-200"
+                : inquiry.isStaffRequired ? "border-amber-300"
+                : "border-gray-100"
               }`}
             >
               {/* 문의 헤더 */}
@@ -236,13 +216,20 @@ export default function AdminPage() {
                   {inquiry.status === "replied" && (
                     <span className="text-xs text-green-500 font-medium">✓ 완료</span>
                   )}
-                  <span className="text-xs text-gray-400">
-                    {formatTime(inquiry.timestamp)}
-                  </span>
+                  <span className="text-xs text-gray-400">{formatTime(inquiry.timestamp)}</span>
+                  <button
+                    onClick={() => deleteInquiry(inquiry)}
+                    className="text-gray-300 hover:text-red-400 transition-colors ml-1"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
 
               <div className="p-4 flex flex-col gap-3">
+
                 {/* 고객 문의 */}
                 <div>
                   <div className="text-xs text-gray-400 mb-1">고객 문의</div>
@@ -268,10 +255,7 @@ export default function AdminPage() {
                     <textarea
                       value={editTexts[inquiry.sessionId] || ""}
                       onChange={(e) =>
-                        setEditTexts((prev) => ({
-                          ...prev,
-                          [inquiry.sessionId]: e.target.value,
-                        }))
+                        setEditTexts((prev) => ({ ...prev, [inquiry.sessionId]: e.target.value }))
                       }
                       className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm leading-relaxed resize-none outline-none focus:border-[#C9A96E]"
                       rows={4}
@@ -300,10 +284,7 @@ export default function AdminPage() {
                     </button>
                     <button
                       onClick={() =>
-                        setEditTexts((prev) => ({
-                          ...prev,
-                          [inquiry.sessionId]: inquiry.aiDraft,
-                        }))
+                        setEditTexts((prev) => ({ ...prev, [inquiry.sessionId]: inquiry.aiDraft }))
                       }
                       className="bg-gray-100 text-gray-600 rounded-xl px-4 py-2.5 text-sm"
                     >

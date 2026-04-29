@@ -15,3 +15,21 @@ export async function GET() {
     return Response.json({ inquiries: [] });
   }
 }
+
+export async function DELETE(request) {
+  try {
+    const { id } = await request.json();
+
+    const { error } = await supabase
+      .from("inquiries")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error("삭제 오류:", error);
+    return Response.json({ error: "삭제 실패" }, { status: 500 });
+  }
+}
