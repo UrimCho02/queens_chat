@@ -167,10 +167,7 @@ export default function Home() {
                   <span key={i}>{part}</span>
                 )
               )}
-            </div>
-          </div>
-        ))}
-
+ 
         {loading && (
           <div className="flex justify-start">
             <div className="w-7 h-7 rounded-full bg-[#C9A96E] flex items-center justify-center text-sm mr-2 flex-shrink-0">
