@@ -18,7 +18,8 @@ export default function AdminPage() {
   const [editTexts, setEditTexts] = useState({});
   const [activeTab, setActiveTab] = useState("staff");
   const [activeCategory, setActiveCategory] = useState("전체");
-  const bottomRef = useRef(null);
+  const [todayCount, setTodayCount] = useState(0);
+  const [dailyLimit, setDailyLimit] = useState(20);
 
   useEffect(() => {
     const loadInquiries = async () => {
@@ -39,14 +40,12 @@ export default function AdminPage() {
         const edits = {};
         data.inquiries.forEach((i) => { edits[i.session_id] = i.ai_draft; });
         setEditTexts(edits);
+        setTodayCount(data.todayCount || 0);
+        setDailyLimit(data.dailyLimit || 20);
       }
     };
     loadInquiries();
   }, []);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [inquiries]);
 
   useEffect(() => {
     const pusher = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY, {
@@ -56,6 +55,7 @@ export default function AdminPage() {
     channel.bind("new-inquiry", (data) => {
       setInquiries((prev) => [...prev, { ...data, id: data.id || Date.now(), status: "pending" }]);
       setEditTexts((prev) => ({ ...prev, [data.sessionId]: data.aiDraft }));
+      setTodayCount((prev) => prev + 1);
     });
     return () => pusher.disconnect();
   }, []);
@@ -113,8 +113,13 @@ export default function AdminPage() {
             <div className="text-white/80 text-xs">직원 관리 페이지</div>
           </div>
         </div>
-        <div className="bg-white/20 text-white text-xs px-2 py-1 rounded-full">
-          전체 {inquiries.length}건
+        <div className="flex items-center gap-2">
+          <div className="bg-white/20 text-white text-xs px-2 py-1 rounded-full">
+            오늘 {todayCount}/{dailyLimit}건
+          </div>
+          <div className="bg-white/20 text-white text-xs px-2 py-1 rounded-full">
+            전체 {inquiries.length}건
+          </div>
         </div>
       </div>
 
@@ -229,7 +234,6 @@ export default function AdminPage() {
               </div>
 
               <div className="p-4 flex flex-col gap-3">
-
                 {/* 고객 문의 */}
                 <div>
                   <div className="text-xs text-gray-400 mb-1">고객 문의</div>
@@ -295,7 +299,6 @@ export default function AdminPage() {
               </div>
             </div>
           ))}
-          <div ref={bottomRef} />
         </div>
       </div>
     </div>

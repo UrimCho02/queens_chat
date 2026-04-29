@@ -139,8 +139,23 @@ export async function POST(request) {
       );
     }
     sessionCounts.set(sessionId, count + 1);
+    
+// 4. 일일 문의 한도 체크
+const today = new Date().toISOString().split("T")[0];
+const { count: dailyCount, error: countError } = await supabase
+  .from("inquiries")
+  .select("*", { count: "exact", head: true })
+  .gte("created_at", `${today}T00:00:00+09:00`)
+  .lte("created_at", `${today}T23:59:59+09:00`);
 
-    // 4. AI 답변 생성
+if (!countError && dailyCount >= (parseInt(process.env.DAILY_LIMIT) || 20)) {
+  return Response.json(
+    { error: "오늘 상담 가능 횟수를 초과했습니다. 내일 다시 문의해 주시거나 전화로 문의해 주세요. 031-997-6700" },
+    { status: 429 }
+  );
+}
+
+    // 5. AI 답변 생성
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 300,
@@ -150,7 +165,7 @@ export async function POST(request) {
 
     const rawReply = response.content[0].text;
 
-    // 5. 태그 파싱
+    // 6. 태그 파싱
     const isStaffRequired = rawReply.includes("STAFF_REQUIRED");
     const categoryMatch = rawReply.match(/CATEGORY:([^\n]+)/);
     const category = categoryMatch ? categoryMatch[1].trim() : "기타";
@@ -159,7 +174,7 @@ export async function POST(request) {
       .replace(/CATEGORY:[^\n]+/, "")
       .trim();
 
-    // 6. Supabase에 저장
+    // 7. Supabase에 저장
     const { data: inquiry, error: dbError } = await supabase
       .from("inquiries")
       .insert({
@@ -175,7 +190,7 @@ export async function POST(request) {
 
     if (dbError) console.error("DB 저장 오류:", dbError);
 
-    // 7. Pusher로 직원 페이지에 실시간 전송
+    // 8. Pusher로 직원 페이지에 실시간 전송
     await pusher.trigger("admin-channel", "new-inquiry", {
       id: inquiry?.id,
       sessionId,
