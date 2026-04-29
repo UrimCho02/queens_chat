@@ -24,7 +24,7 @@ function MessageText({ text, isUser }) {
           <span key={lineIdx}>
             {parts.map((part, i) =>
               /https?:\/\/[^\s]+/.test(part) ? (
-                
+                <a                
                   key={i}
                   href={part}
                   target="_blank"

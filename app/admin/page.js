@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import PusherClient from "pusher-js";
+import { supabase } from "@/lib/supabase";
 
 const CATEGORIES = ["전체", "예약/진료시간", "비용문의", "여성성형", "피부과", "증상문의", "기타"];
 
@@ -19,6 +20,33 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("staff");
   const [activeCategory, setActiveCategory] = useState("전체");
   const bottomRef = useRef(null);
+
+  // DB에서 기존 문의 불러오기
+  useEffect(() => {
+    const loadInquiries = async () => {
+      const res = await fetch("/api/inquiries");
+      const data = await res.json();
+      if (data.inquiries) {
+        setInquiries(data.inquiries.map((i) => ({
+          id: i.id,
+          sessionId: i.session_id,
+          userMessage: i.user_message,
+          aiDraft: i.ai_draft,
+          category: i.category,
+          isStaffRequired: i.is_staff_required,
+          status: i.status,
+          finalReply: i.final_reply,
+          timestamp: i.created_at,
+        })));
+        const edits = {};
+        data.inquiries.forEach((i) => {
+          edits[i.session_id] = i.ai_draft;
+        });
+        setEditTexts(edits);
+      }
+    };
+    loadInquiries();
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -43,7 +71,11 @@ export default function AdminPage() {
     await fetch("/api/reply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: inquiry.sessionId, reply: text }),
+      body: JSON.stringify({
+        sessionId: inquiry.sessionId,
+        reply: text,
+        inquiryId: inquiry.id,
+      }),
     });
     setInquiries((prev) =>
       prev.map((i) =>

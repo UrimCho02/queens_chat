@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import Pusher from "pusher";
+import { supabase } from "@/lib/supabase";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -36,7 +37,8 @@ const SYSTEM_PROMPT = `당신은 더퀸즈여성의원의 AI 상담 어시스턴
 - 산부인과 일반진료 (임신, 피임, 생리 관련 등)
 - 여성성형 (소음순 수술 등)
 - 골밀도 검사, 면역주사, 갱년기 케어
-- 피부과 진료, 임신 사전건강관리
+- 피부 관리 시술 (더마샤인 등 피부 미용 시술)
+- 임신 사전건강관리
 
 [병원 특징]
 - 두 분의 원장님이 직접 진료, 프라이버시 철저 보호
@@ -58,6 +60,11 @@ const SYSTEM_PROMPT = `당신은 더퀸즈여성의원의 AI 상담 어시스턴
 9. 톤: 따뜻하고 공감하는 톤.
 10. 의료진 표현 시 반드시 "두 분의 원장님이 직접 진료합니다" 또는 "원장님이 직접 진료해 드립니다"로만 표현. "여의사" 단독 사용 금지. 꼭 필요한 경우 "여성 전문의 원장님"으로 표현.
 11. 병원 진료, 예약, 위치, 비용과 무관한 질문 → "저는 더퀸즈여성의원 상담만 도와드릴 수 있어요. 진료 관련 궁금한 점을 물어봐 주세요 😊" 이 문장만 반환.
+12. 피부과 문의 → 저희는 피부과 전문 진료가 아닌 
+    더마샤인 등 피부 관리 시술을 운영하고 있어요. 
+    구체적인 시술 상담은 내원하시거나 
+    예약 후 문의해 주세요. 
+    "피부과 전문의 진료" 표현 절대 사용 금지.
 
 [카테고리 분류 규칙]
 반드시 답변 맨 앞에 아래 형식으로 카테고리 태그를 붙이세요.
@@ -148,8 +155,25 @@ export async function POST(request) {
       .replace(/CATEGORY:[^\n]+/, "")
       .trim();
 
-    // 6. Pusher로 직원 페이지에 실시간 전송
+    // 6. Supabase에 저장
+    const { data: inquiry, error: dbError } = await supabase
+      .from("inquiries")
+      .insert({
+        session_id: sessionId,
+        user_message: message,
+        ai_draft: cleanReply,
+        category,
+        is_staff_required: isStaffRequired,
+        status: "pending",
+      })
+      .select()
+      .single();
+
+    if (dbError) console.error("DB 저장 오류:", dbError);
+
+    // 7. Pusher로 직원 페이지에 실시간 전송
     await pusher.trigger("admin-channel", "new-inquiry", {
+      id: inquiry?.id,
       sessionId,
       userMessage: message,
       aiDraft: cleanReply,
