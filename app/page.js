@@ -15,23 +15,33 @@ function generateSessionId() {
 }
 
 function MessageText({ text, isUser }) {
-  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  const lines = text.split("\n");
   return (
     <>
-      {parts.map((part, i) =>
-        /https?:\/\/[^\s]+/.test(part) ? (
-          
-          <a
-            key={i}
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline break-all"
-            style={{ color: isUser ? "rgba(255,255,255,0.9)" : "#C9A96E" }}>{part}</a>
-        ) : (
-          <span key={i}>{part}</span>
-        )
-      )}
+      {lines.map((line, lineIdx) => {
+        const parts = line.split(/(https?:\/\/[^\s]+)/g);
+        return (
+          <span key={lineIdx}>
+            {parts.map((part, i) =>
+              /https?:\/\/[^\s]+/.test(part) ? (
+                
+                  key={i}
+                  href={part}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline break-all"
+                  style={{ color: isUser ? "rgba(255,255,255,0.9)" : "#C9A96E" }}
+                >
+                  {part}
+                </a>
+              ) : (
+                <span key={i}>{part}</span>
+              )
+            )}
+            {lineIdx < lines.length - 1 && <br />}
+          </span>
+        );
+      })}
     </>
   );
 }
@@ -156,7 +166,7 @@ export default function Home() {
                 👑
               </div>
             )}
-            <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-line shadow-sm
+            <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm
               ${msg.isUser
                 ? "bg-[#C9A96E] text-white rounded-tr-sm"
                 : msg.isStaff
