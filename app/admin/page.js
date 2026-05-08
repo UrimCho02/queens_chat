@@ -53,7 +53,7 @@ export default function AdminPage() {
     });
     const channel = pusher.subscribe("admin-channel");
     channel.bind("new-inquiry", (data) => {
-      setInquiries((prev) => [...prev, { ...data, id: data.id || Date.now(), status: "pending" }]);
+      setInquiries((prev) => [{ ...data, id: data.id || Date.now(), status: "pending" }, ...prev]);
       setEditTexts((prev) => ({ ...prev, [data.sessionId]: data.aiDraft }));
       setTodayCount((prev) => prev + 1);
     });
@@ -82,7 +82,10 @@ export default function AdminPage() {
 
   const formatTime = (iso) => {
     const d = new Date(iso);
-    return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const time = d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+    return `${month}/${day} ${time}`;
   };
 
   const categoryFiltered = activeCategory === "전체"
