@@ -36,6 +36,13 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Claude Code 로컬 상태
+/.claude
+
+# 운영자 메모 (UID 등 민감 정보)
+UID*.txt
+*메모*.txt
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
