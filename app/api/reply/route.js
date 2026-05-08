@@ -1,5 +1,5 @@
 import Pusher from "pusher";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID,
@@ -11,6 +11,7 @@ const pusher = new Pusher({
 
 export async function POST(request) {
   try {
+    const supabase = await createClient();
     const { sessionId, reply, inquiryId } = await request.json();
 
     // DB status 업데이트

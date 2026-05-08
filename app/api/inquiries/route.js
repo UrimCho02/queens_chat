@@ -1,7 +1,8 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
   try {
+    const supabase = await createClient();
     const today = new Date().toISOString().split("T")[0];
 
     const { data, error } = await supabase
@@ -30,6 +31,7 @@ export async function GET() {
 
 export async function DELETE(request) {
   try {
+    const supabase = await createClient();
     const { id } = await request.json();
 
     const { error } = await supabase

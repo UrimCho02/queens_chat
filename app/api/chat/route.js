@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import Pusher from "pusher";
-import { supabase } from "@/lib/supabase";
+import { createServiceClient } from "@/lib/supabase/service";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -201,6 +201,7 @@ const MAX_REQUESTS = 10;
 
 export async function POST(request) {
   try {
+    const supabase = createServiceClient();
     const { message, sessionId } = await request.json();
 
     // 1. 빈 메시지 체크
