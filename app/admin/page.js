@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import PusherClient from "pusher-js";
+import { createClient } from "@/lib/supabase/client";
 
 const CATEGORIES = ["전체", "예약/진료시간", "비용문의", "여성성형", "피부과", "증상문의", "기타"];
 
@@ -14,12 +16,20 @@ const CATEGORY_STYLE = {
 };
 
 export default function AdminPage() {
+  const router = useRouter();
   const [inquiries, setInquiries] = useState([]);
   const [editTexts, setEditTexts] = useState({});
   const [activeTab, setActiveTab] = useState("staff");
   const [activeCategory, setActiveCategory] = useState("전체");
   const [todayCount, setTodayCount] = useState(0);
   const [dailyLimit, setDailyLimit] = useState(20);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
 
   useEffect(() => {
     const loadInquiries = async () => {
@@ -123,6 +133,12 @@ export default function AdminPage() {
           <div className="bg-white/20 text-white text-xs px-2 py-1 rounded-full">
             전체 {inquiries.length}건
           </div>
+          <button
+            onClick={handleLogout}
+            className="bg-white/20 text-white text-xs px-2 py-1 rounded-full hover:bg-white/30 transition-colors"
+          >
+            로그아웃
+          </button>
         </div>
       </div>
 

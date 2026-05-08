@@ -1,24 +1,38 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function Login() {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async () => {
-    const res = await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
+    if (!email || !password) {
+      setError("이메일과 비밀번호를 입력해 주세요.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
-    if (res.ok) {
-      router.push("/admin");
-    } else {
-      setError("비밀번호가 올바르지 않습니다.");
+    setLoading(false);
+
+    if (signInError) {
+      setError("이메일 또는 비밀번호가 올바르지 않습니다.");
+      return;
     }
+
+    router.push("/admin");
+    router.refresh();
   };
 
   return (
@@ -30,11 +44,21 @@ export default function Login() {
           <div className="text-sm text-gray-500 mt-1">직원 전용 관리 페이지</div>
         </div>
         <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+          placeholder="이메일"
+          autoComplete="email"
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#C9A96E] mb-3"
+        />
+        <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-          placeholder="비밀번호를 입력하세요"
+          placeholder="비밀번호"
+          autoComplete="current-password"
           className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#C9A96E] mb-3"
         />
         {error && (
@@ -42,9 +66,10 @@ export default function Login() {
         )}
         <button
           onClick={handleLogin}
-          className="w-full bg-[#C9A96E] text-white rounded-xl py-3 text-sm font-medium"
+          disabled={loading}
+          className="w-full bg-[#C9A96E] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-60"
         >
-          로그인
+          {loading ? "로그인 중..." : "로그인"}
         </button>
       </div>
     </div>
