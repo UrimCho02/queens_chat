@@ -134,8 +134,14 @@ export default function AdminPage() {
             전체 {inquiries.length}건
           </div>
           <button
+            onClick={() => router.push("/admin/settings")}
+            className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
+          >
+            ⚙ 설정
+          </button>
+          <button
             onClick={handleLogout}
-            className="bg-white/20 text-white text-xs px-2 py-1 rounded-full hover:bg-white/30 transition-colors"
+            className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
           >
             로그아웃
           </button>
