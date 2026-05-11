@@ -48,6 +48,21 @@ export default function SettingsForm({ initial }) {
   const [services, setServices] = useState(arrayToLines(s.services));
   const [features, setFeatures] = useState(arrayToLines(s.features));
 
+  const [tone, setTone] = useState(s.tone === "formal" ? "formal" : "warm");
+  const [hoursNotes, setHoursNotes] = useState(
+    Array.isArray(s.hours_notes)
+      ? s.hours_notes.map((n) => ({
+          text: n?.text || "",
+          enabled: !!n?.enabled,
+        }))
+      : []
+  );
+  const [substituteHolidayPolicy, setSubstituteHolidayPolicy] = useState(
+    s.substitute_holiday_policy || ""
+  );
+  const [currentEvent, setCurrentEvent] = useState(s.current_event || "");
+  const [disclaimer, setDisclaimer] = useState(s.disclaimer || "");
+
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
 
@@ -57,11 +72,28 @@ export default function SettingsForm({ initial }) {
     );
   };
 
+  const updateHoursNote = (idx, field, value) => {
+    setHoursNotes((prev) =>
+      prev.map((n, i) => (i === idx ? { ...n, [field]: value } : n))
+    );
+  };
+  const addHoursNote = () => {
+    setHoursNotes((prev) => [...prev, { text: "", enabled: true }]);
+  };
+  const removeHoursNote = (idx) => {
+    setHoursNotes((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setStatus(null);
 
+    const cleanedHoursNotes = hoursNotes
+      .map((n) => ({ text: n.text.trim(), enabled: !!n.enabled }))
+      .filter((n) => n.text);
+
     const newSettings = {
+      tone,
       hours: {
         ...(weekdayHours && { weekday: weekdayHours }),
         ...(lunchHours && { lunch: lunchHours }),
@@ -80,6 +112,12 @@ export default function SettingsForm({ initial }) {
       ...(linesToArray(features).length && {
         features: linesToArray(features),
       }),
+      ...(cleanedHoursNotes.length && { hours_notes: cleanedHoursNotes }),
+      ...(substituteHolidayPolicy.trim() && {
+        substitute_holiday_policy: substituteHolidayPolicy.trim(),
+      }),
+      ...(currentEvent.trim() && { current_event: currentEvent.trim() }),
+      ...(disclaimer.trim() && { disclaimer: disclaimer.trim() }),
     };
 
     if (Object.keys(newSettings.hours).length === 0) delete newSettings.hours;
@@ -209,6 +247,65 @@ export default function SettingsForm({ initial }) {
               })}
             </div>
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-gray-500 font-medium">
+              진료시간 부가 안내
+            </label>
+            <div className="text-xs text-gray-400">
+              "사용" 체크된 항목만 챗봇 응답에 포함됩니다.
+            </div>
+            {hoursNotes.map((note, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={note.text}
+                  onChange={(e) => updateHoursNote(idx, "text", e.target.value)}
+                  placeholder="예: 10분 전까지 접수 가능"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#C9A96E]"
+                />
+                <label
+                  className={`flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs cursor-pointer border transition-colors ${
+                    note.enabled
+                      ? "bg-[#C9A96E] text-white border-[#C9A96E]"
+                      : "bg-white text-gray-500 border-gray-200"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={note.enabled}
+                    onChange={(e) =>
+                      updateHoursNote(idx, "enabled", e.target.checked)
+                    }
+                    className="hidden"
+                  />
+                  사용
+                </label>
+                <button
+                  type="button"
+                  onClick={() => removeHoursNote(idx)}
+                  className="text-gray-300 hover:text-red-500 cursor-pointer px-1"
+                  title="삭제"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addHoursNote}
+              className="self-start text-xs text-[#C9A96E] hover:underline cursor-pointer mt-1"
+            >
+              + 안내 추가
+            </button>
+          </div>
+
+          <Field
+            label="대체공휴일 안내"
+            value={substituteHolidayPolicy}
+            onChange={setSubstituteHolidayPolicy}
+            placeholder="예: 대체공휴일은 병원 사정에 따라 변동되니 전화로 확인 부탁드립니다."
+          />
         </Section>
 
         <Section title="의료진 / 안내">
@@ -271,6 +368,55 @@ export default function SettingsForm({ initial }) {
             multiline
             rows={4}
             placeholder={"프라이버시 철저 보호\n무료 발렛"}
+          />
+        </Section>
+
+        <Section title="챗봇 설정">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-gray-500 font-medium">말투</label>
+            <div className="flex gap-2">
+              {[
+                { code: "warm", label: "친근체 (~에요)" },
+                { code: "formal", label: "격식체 (~입니다)" },
+              ].map((opt) => (
+                <label
+                  key={opt.code}
+                  className={`flex-1 text-center px-3 py-2 rounded-xl text-sm cursor-pointer border transition-colors ${
+                    tone === opt.code
+                      ? "bg-[#C9A96E] text-white border-[#C9A96E]"
+                      : "bg-white text-gray-600 border-gray-200"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="tone"
+                    value={opt.code}
+                    checked={tone === opt.code}
+                    onChange={() => setTone(opt.code)}
+                    className="hidden"
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <Field
+            label="이번달 이벤트"
+            value={currentEvent}
+            onChange={setCurrentEvent}
+            multiline
+            rows={2}
+            placeholder="비워두면 노출 안 함. 예: 11월 한 달간 골밀도 검사 20% 할인"
+          />
+
+          <Field
+            label="면책 문구"
+            value={disclaimer}
+            onChange={setDisclaimer}
+            multiline
+            rows={2}
+            placeholder="예: 본 채널은 일반 안내용이며 진료를 대신할 수 없습니다."
           />
         </Section>
       </div>

@@ -46,13 +46,18 @@ function MessageText({ text, isUser }) {
   );
 }
 
+const DEFAULT_DISCLAIMER =
+  "본 채널은 일반 안내용 AI 상담 채널이며, 진료를 대신할 수 없습니다. 정확한 진단·치료는 의사 진료가 필요합니다.";
+
 export default function Home() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(null);
+  const [chatInfo, setChatInfo] = useState(null);
   const [sessionId] = useState(() => generateSessionId());
   const messagesEndRef = useRef(null);
+  const isOpen = chatInfo?.isOpen ?? null;
+  const disclaimer = chatInfo?.disclaimer || DEFAULT_DISCLAIMER;
   const inputRef = useRef(null);
   const prevLoadingRef = useRef(false);
 
@@ -73,13 +78,25 @@ export default function Home() {
     fetch("/api/chat")
       .then((r) => r.json())
       .then((data) => {
-        setIsOpen(data.isOpen);
-        setMessages([{
+        setChatInfo(data);
+        const clinicName = data.clinicName || "병원";
+        const greeting = {
           id: 1,
-          text: "안녕하세요! 더퀸즈여성의원 AI 상담 채널입니다. 👑\n진료시간, 예약, 비용 등 궁금하신 점을 편하게 물어보세요.\n\n※ 증상 관련 문의는 담당 직원이 확인 후 답변드립니다.",
+          text: `안녕하세요! ${clinicName} AI 상담 채널입니다. 👑\n진료시간, 예약, 비용 등 궁금하신 점을 편하게 물어보세요.\n\n※ 증상 관련 문의는 담당 직원이 확인 후 답변드립니다.`,
           isUser: false,
           isStaff: false,
-        }]);
+        };
+        const msgs = [greeting];
+        if (data.currentEvent) {
+          msgs.push({
+            id: 2,
+            text: `🎉 이번달 이벤트\n\n${data.currentEvent}`,
+            isUser: false,
+            isStaff: false,
+            isEvent: true,
+          });
+        }
+        setMessages(msgs);
       });
 
     const pusher = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY, {
@@ -168,6 +185,11 @@ export default function Home() {
         </div>
       )}
 
+      {/* 면책 안내 */}
+      <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800 text-center flex-shrink-0 leading-snug">
+        ⚠ {disclaimer}
+      </div>
+
       {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
         {messages.map((msg) => (
@@ -182,6 +204,8 @@ export default function Home() {
                 ? "bg-[#C9A96E] text-white rounded-tr-sm"
                 : msg.isStaff
                 ? "bg-blue-50 border border-blue-200 text-gray-800 rounded-tl-sm"
+                : msg.isEvent
+                ? "bg-amber-50 border border-amber-200 text-gray-800 rounded-tl-sm"
                 : "bg-white text-gray-800 rounded-tl-sm"
               }`}
             >

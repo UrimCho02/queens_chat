@@ -63,7 +63,32 @@ function isBusinessHours() {
 }
 
 export async function GET() {
-  return Response.json({ isOpen: isBusinessHours() });
+  const supabase = createServiceClient();
+  const { data: clinic } = await supabase
+    .from("clinics")
+    .select("id, name")
+    .eq("slug", CLINIC_SLUG)
+    .single();
+
+  let currentEvent = "";
+  let disclaimer = "";
+  if (clinic?.id) {
+    const { data: row } = await supabase
+      .from("clinic_settings")
+      .select("settings")
+      .eq("clinic_id", clinic.id)
+      .maybeSingle();
+    const s = row?.settings || {};
+    currentEvent = s.current_event || "";
+    disclaimer = s.disclaimer || "";
+  }
+
+  return Response.json({
+    isOpen: isBusinessHours(),
+    clinicName: clinic?.name || "",
+    currentEvent,
+    disclaimer,
+  });
 }
 
 const sessionCounts = new Map();
