@@ -53,10 +53,21 @@ export default function Home() {
   const [isOpen, setIsOpen] = useState(null);
   const [sessionId] = useState(() => generateSessionId());
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+  const prevLoadingRef = useRef(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    // loading이 true→false로 바뀌는 순간(메시지 응답 완료)에만 입력창 포커스 복원.
+    // 초기 마운트 때는 모바일 키보드 자동 팝업 방지 위해 포커스 안 함.
+    if (prevLoadingRef.current && !loading) {
+      inputRef.current?.focus();
+    }
+    prevLoadingRef.current = loading;
+  }, [loading]);
 
   useEffect(() => {
     fetch("/api/chat")
@@ -212,6 +223,7 @@ export default function Home() {
       {/* 입력창 */}
       <div className="px-3 py-3 flex gap-2 items-center bg-white flex-shrink-0">
         <input
+          ref={inputRef}
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
