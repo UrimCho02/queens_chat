@@ -180,12 +180,20 @@ export default function SettingsForm({ initial }) {
             <div className="text-white/80 text-xs">병원 정보 수정</div>
           </div>
         </div>
-        <button
-          onClick={() => router.push("/admin")}
-          className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
-        >
-          ← 문의 목록
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push("/admin")}
+            className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
+          >
+            ← 문의 목록
+          </button>
+          <button
+            onClick={() => router.push("/admin/faqs")}
+            className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
+          >
+            FAQ
+          </button>
+        </div>
       </div>
 
       <div className="p-4 max-w-2xl mx-auto flex flex-col gap-4 pb-28">

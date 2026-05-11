@@ -42,7 +42,8 @@ export async function proxy(request) {
     path.startsWith("/admin") ||
     path.startsWith("/api/inquiries") ||
     path.startsWith("/api/reply") ||
-    path.startsWith("/api/clinic-settings");
+    path.startsWith("/api/clinic-settings") ||
+    path.startsWith("/api/clinic-faqs");
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
@@ -65,6 +66,7 @@ export const config = {
     "/api/inquiries/:path*",
     "/api/reply/:path*",
     "/api/clinic-settings/:path*",
+    "/api/clinic-faqs/:path*",
     "/login",
   ],
 };
