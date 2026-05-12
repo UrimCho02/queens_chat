@@ -48,7 +48,7 @@ export default function AdminPage() {
           timestamp: i.created_at,
         })));
         const edits = {};
-        data.inquiries.forEach((i) => { edits[i.session_id] = i.ai_draft; });
+        data.inquiries.forEach((i) => { edits[i.id] = i.ai_draft; });
         setEditTexts(edits);
         setTodayCount(data.todayCount || 0);
         setDailyLimit(data.dailyLimit || 20);
@@ -63,8 +63,9 @@ export default function AdminPage() {
     });
     const channel = pusher.subscribe("admin-channel");
     channel.bind("new-inquiry", (data) => {
-      setInquiries((prev) => [{ ...data, id: data.id || Date.now(), status: "pending" }, ...prev]);
-      setEditTexts((prev) => ({ ...prev, [data.sessionId]: data.aiDraft }));
+      const id = data.id || Date.now();
+      setInquiries((prev) => [{ ...data, id, status: "pending" }, ...prev]);
+      setEditTexts((prev) => ({ ...prev, [id]: data.aiDraft }));
       setTodayCount((prev) => prev + 1);
     });
     return () => pusher.disconnect();
@@ -288,9 +289,9 @@ export default function AdminPage() {
                   <div>
                     <div className="text-xs text-amber-500 mb-1">AI 초안 (수정 후 발송)</div>
                     <textarea
-                      value={editTexts[inquiry.sessionId] || ""}
+                      value={editTexts[inquiry.id] || ""}
                       onChange={(e) =>
-                        setEditTexts((prev) => ({ ...prev, [inquiry.sessionId]: e.target.value }))
+                        setEditTexts((prev) => ({ ...prev, [inquiry.id]: e.target.value }))
                       }
                       className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm leading-relaxed resize-none outline-none focus:border-[#C9A96E]"
                       rows={4}
@@ -312,14 +313,14 @@ export default function AdminPage() {
                 {inquiry.isStaffRequired && inquiry.status !== "replied" && (
                   <div className="flex gap-2">
                     <button
-                      onClick={() => sendReply(inquiry, editTexts[inquiry.sessionId])}
+                      onClick={() => sendReply(inquiry, editTexts[inquiry.id])}
                       className="flex-1 bg-[#C9A96E] text-white rounded-xl py-2.5 text-sm font-medium active:bg-[#b8965d]"
                     >
                       발송
                     </button>
                     <button
                       onClick={() =>
-                        setEditTexts((prev) => ({ ...prev, [inquiry.sessionId]: inquiry.aiDraft }))
+                        setEditTexts((prev) => ({ ...prev, [inquiry.id]: inquiry.aiDraft }))
                       }
                       className="bg-gray-100 text-gray-600 rounded-xl px-4 py-2.5 text-sm"
                     >
