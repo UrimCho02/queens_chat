@@ -1,0 +1,260 @@
+# 작업 일지 (WORK_LOG)
+
+> 새 작업 끝낼 때마다 이 파일 최상단에 항목 추가. 시간순으로 위가 최신.
+> 양식: `## YYYY-MM-DD` (날짜 헤더) → `### 작업명` → 목적/결과/이슈/해결.
+
+---
+
+## 다음에 해야 할 일
+
+진행 우선순위 순:
+
+1. **원장님 1차 요구사항 3개 — 우선순위 순**
+   - (a) 이벤트창 이미지 업로드 (Supabase Storage `clinic-assets` 버킷 + 업로드 API + 폼 + 챗봇 버블 렌더링) ← **재개 지점: Storage 버킷 생성부터**
+   - (b) 하이브리드 메뉴 UX — 챗봇 첫 화면 클릭 메뉴 카드 + 자유 입력창 (닥터챗봇 참조 이미지 확인 후 설계 확정)
+   - (c) 수술 후 회복 가이드 — 어드민에서 수술별 일정(N일차 ~) 등록 → 챗봇이 "수술 N일차에 ~" 질문에 가이드 참고 답변. 가이드 없는 증상 질문은 기존 STAFF_REQUIRED 룰 유지.
+2. **단계 9** — `/admin/logs` (변경 이력 페이지). `clinic_change_logs` 시간 역순 표시 + JSONB diff 렌더링.
+3. **production 동작 검증** — queens-chat.vercel.app 에서 5E RLS 적용 후 챗봇/어드민 한 번 확인 (DB는 단일이라 RLS는 이미 production에도 반영됨).
+4. **master 머지** — 단계 6~8 + 5E 코드가 multitenant 브랜치에만 있음. 머지 타이밍 결정 필요.
+5. (기술 부채) `DAILY_LIMIT` fallback 불일치 정리 (`inquiries` 50 / `chat` 20 → 한쪽으로 통일).
+
+---
+
+## 2026-05-14
+
+### 단계 5E 완료 — RLS 활성화
+
+**계기**: Supabase에서 보안 경고 메일 수신 — `rls_disabled_in_public`, `sensitive_columns_exposed`. anon key가 브라우저에 노출되어 있는데 RLS 미설정 → 누구나 PostgREST로 모든 테이블 read/write 가능한 상태였음. 사용자 결정: 원장님 요구사항보다 보안 먼저.
+
+**한 것**
+- 코드 감사 — supabase client 사용 패턴 매트릭스화. 결과: RLS 켰을 때 영향받는 코드 경로는 단 2개 (`/api/inquiries` GET/DELETE, `/api/reply` UPDATE — 둘 다 server client + cookie auth). 나머지는 service_role.
+- 5A 헬퍼 함수 재확인 (`is_superadmin()`, `user_can_access_clinic(uuid)`) — SECURITY DEFINER로 정의되어 정책에서 self-recursion 없이 안전 사용 가능.
+- 마이그레이션 작성: `supabase/migrations/20260514000000_enable_rls.sql` — 7개 테이블 RLS enable + 13개 정책. service_role은 bypass, anon 차단, authenticated는 `user_can_access_clinic(clinic_id)` 통과 시 SELECT/UPDATE/DELETE. INSERT는 어드민 mutation이 service_role 쓰니까 authenticated에 부여 안 함.
+
+**이슈와 해결**
+- Studio 적용 전 사전 체크 SQL 실행 → `inquiries.clinic_id IS NULL` 10개 발견.
+- 원인: 단계 4(2026-05-07 백필) 이후, 단계 6(2026-05-11 chat 코드에 clinic_id 박기) 이전에 들어온 inquiries들이 clinic_id 없이 INSERT됨.
+- 그대로 RLS 켜면 `user_can_access_clinic(NULL)`이 false라 어드민이 그 10개 문의를 영영 못 봄.
+- **해결**: `20260513000000_backfill_orphan_inquiries.sql` 작성 — NULL 행을 더퀸즈로 백필 (현재 단일 병원이라 안전). 적용 순서가 보장되도록 파일명 날짜를 RLS 마이그레이션보다 앞으로.
+
+**적용 + 검증**
+- 순서: 백필 마이그레이션 → NULL 0개 확인 → RLS 마이그레이션 → 동작 검증 → Advisor 확인.
+- 검증 완료: 챗봇(로그아웃 상태)/어드민(로그인) 동작 정상, `rls_on_tables=7` / `total_policies=13`, Security Advisor 에러 4개 모두 클리어.
+
+**결과**: 멀티테넌트 전환 9단계 + 5하위단계 전부 종료. anon key 노출 위험 제거.
+
+### CLAUDE.md / WORK_LOG.md 신규 작성
+
+- 사용자 요청으로 `CLAUDE.md` (프로젝트 개요·기술스택·디렉토리·결정사항·주의사항) + `WORK_LOG.md` (이 파일) 작성.
+- 자동 메모리에 "작업 단위 완료 시 WORK_LOG 갱신" 룰 추가 (`feedback_work_log.md`).
+
+---
+
+### 보안 정리 — GitHub PAT 노출
+
+**계기**: 어제(05-13) 푸시 작업 중 `clinictalk-landing/.git/config`의 `remote.origin.url`에 GitHub Personal Access Token이 평문으로 박혀 있는 걸 발견. 출력에 그대로 노출됨.
+
+**한 것**
+1. `.gitmodules` 파일이 부모 리포에 트래킹되지 않은 것 확인 → 토큰이 GitHub에 푸시된 적은 없음 (다행).
+2. 사용자가 GitHub Settings → Developer settings → PAT에서 해당 토큰 revoke.
+3. 양쪽 리포 URL을 토큰 없는 깨끗한 형태로 교체:
+   - `git -C clinictalk-landing remote set-url origin https://github.com/UrimCho02/clinictalk-landing.git`
+   - `git remote set-url origin https://github.com/UrimCho02/queens_chat.git`
+4. 사용자가 Windows 자격증명 관리자에서 옛 git 자격증명 제거.
+5. 다음 push 시 Git Credential Manager(시스템 기본)가 브라우저 OAuth로 자동 처리할 예정.
+
+**결과**: 토큰 노출 완전 차단. 부모/서브모듈 모두 깨끗한 URL.
+
+**예방책 메모**: 새 토큰 만들 때 URL에 박지 말고 GCM 또는 ssh key 사용. PowerShell 출력에 토큰 한 번이라도 찍히면 텔레메트리·터미널 스크롤백·복붙 등에 잔존할 수 있음 → 즉시 revoke가 가장 안전.
+
+---
+
+## 2026-05-13
+
+### 단계 8 동작 테스트 완료 — `/admin/faqs`
+
+**목적**: 단계 8에서 코드만 작성된 FAQ 관리 페이지의 실제 동작 검증.
+
+**테스트한 것 (7항목 전부 통과)**
+1. 기존 FAQ 6개 목록 조회 (sort_order 정렬)
+2. 새 FAQ 추가 (CREATE) — UI 토스트 + `clinic_faqs` INSERT + `clinic_change_logs` action='create' 확인
+3. 기존 FAQ 수정 (UPDATE) — before/after diff가 `clinic_change_logs`에 기록됨
+4. 사용 토글 (is_active=false) — DB 반영 확인
+5. FAQ 삭제 (DELETE) — `clinic_change_logs` action='delete', before 보존
+6. **챗봇 반영 확인** — 새 FAQ 추가 후 챗봇이 답변에 사용. 비활성으로 토글하면 같은 질문에 답 안 함 → `buildPrompt`의 `is_active=true` 필터 정상 동작 확인.
+7. 에지 케이스: 빈 입력 차단 + 로그아웃 후 `/admin/faqs` 접근 시 `/login` 리다이렉트.
+
+**결과**: 단계 8 ✅ 완료. 메모리 트래커 갱신.
+
+---
+
+### 원장님 1차 미팅 후 요구사항 3개 접수
+
+원장님이 어제(2026-05-12) 미팅에서 다음 요구사항 전달:
+
+1. **이벤트창 이미지 업로드**: 현재 `/admin/settings`의 "이번달 이벤트"가 텍스트만. 이미지도 업로드 가능해야 함.
+2. **하이브리드 메뉴 UX**: 닥터챗봇처럼 첫 화면에 클릭 가능한 메뉴 카드 + 그 아래 자유 입력창. 클릭으로 빠른 해결 / 자유 질문 둘 다 만족.
+3. **수술 후 회복 가이드**: "수술 4일차에 세수해도 되나요" 같은 표준 회복 가이드 답변. 의료법 가드레일 — 챗봇은 의학적 판단 X, 원장님이 미리 등록한 가이드 그대로 전달 O. 가이드에 없는 증상 질문은 기존대로 STAFF_REQUIRED.
+
+작업 계획 수립 — 우선순위는 (1) → (2) → (3). 우선순위 결정 후 5E 작업이 끼어들어 (1) 시작 직전에 멈춤.
+
+---
+
+### 랜딩 페이지 리디자인 푸시
+
+- `clinictalk-landing` 서브모듈에서 `index.html` 전면 개편 (폰트/컬러/레이아웃, +1084/-651).
+- 서브모듈 master에 commit + push.
+- 부모 리포 multitenant 브랜치에서 서브모듈 포인터 최신화 commit + push.
+
+---
+
+## 2026-05-12
+
+### 챗봇/어드민 잔손질 (2 commits)
+
+- `e80fdf1` 챗봇 마무리 멘트 자기모순 방지 룰 보강 (`lib/prompts/safety.js`)
+- `d98ed84` 어드민 AI 초안 textarea 키를 inquiry.id로 변경 — React 리렌더 시 textarea 상태 꼬임 방지
+
+---
+
+## 2026-05-11
+
+### 단계 6 — 시스템 프롬프트 분리
+
+**목적**: 챗봇 시스템 프롬프트가 코드 안에 하드코딩되어 있어 멀티테넌트 전환 막힘 → 의료법 가드(코드 단)와 병원별 데이터(DB)로 분리.
+
+**한 것**
+- `lib/prompts/safety.js` 신규 — 의료법 룰. `clinicName`/`bookingUrl` 인자.
+- `lib/prompts/buildPrompt.js` 신규 — `clinics` + `clinic_settings` + `clinic_faqs` 3쿼리 → 프롬프트 조립.
+- `app/api/chat/route.js` 개편 — `SYSTEM_PROMPT` 상수 제거, `buildPrompt(clinic.id)` 호출. `clinic.phone` 동적, `inquiries.clinic_id` INSERT, 일일 한도도 clinic 필터.
+
+**이슈와 해결**
+- 처음엔 FAQ 섹션을 `[답변 규칙]` 앞에 뒀더니 모델이 FAQ의 친절-답변 패턴을 따라 안전 규칙(증상 → STAFF_REQUIRED)을 무시함.
+- **해결**: FAQ를 `[답변 규칙]` 뒤로 옮기고, 라벨링을 "[참고: 자주 묻는 질문] — [답변 규칙] 우선 적용, 일반 문의(규칙 11)에 해당하는 경우만 참고"로 명시.
+
+**부수 작업**: 챗봇 응답 완료 후 입력창 포커스 복원 버그 픽스 (`app/page.js`).
+
+---
+
+### 단계 7 — `/admin/settings` 병원 정보 수정 페이지
+
+**목적**: 어드민이 자기 병원의 `clinics`(name/phone/address) + `clinic_settings`(slogan/booking_url/settings JSONB)를 폼으로 수정.
+
+**한 것**
+- `/admin/settings/page.js` + `SettingsForm.js` 신규.
+- 폼 섹션별 입력: 기본정보 / 진료시간 / 의료진 / 진료과목 / 주요항목 / 특징 / 챗봇 설정.
+- `/api/clinic-settings` POST — UPDATE + `clinic_change_logs` INSERT.
+- `lib/auth/getCurrentClinic.js` 헬퍼.
+- `/api/chat` GET이 clinicName/currentEvent/disclaimer 같이 반환.
+
+### 단계 7 보강 — 의료진 1차 피드백 반영
+
+같은 날 오후 의료진 1차 피드백 반영 추가:
+- 톤 선택 (친근체/격식체, `safety.js` 분기)
+- 진료시간 부가 안내 동적 리스트 (사용 토글)
+- 대체공휴일 정책
+- 이번달 이벤트 (인사 직후 별도 버블)
+- 면책 문구 (상단 배너)
+- 안전 규칙 추가: "예약 링크 오용 방지" — 진료시간 외엔 예약 링크 그대로 노출 금지.
+
+### 단계 8 코드 작성 — `/admin/faqs` (테스트 전)
+
+- `FaqsManager.js` — 카드 단위 CRUD, 카드별 개별 저장. 새 항목은 노란 테두리.
+- `/api/clinic-faqs` POST + `/api/clinic-faqs/[id]` PUT/DELETE.
+- 모든 작업이 `clinic_change_logs` 기록.
+- `buildPrompt.js`에 `is_active=true` 필터 추가.
+- 헤더 [FAQ] 네비게이션 추가.
+- 동작 테스트는 2일 후(2026-05-13) 진행.
+
+---
+
+## 2026-05-08
+
+### 단계 5 — Supabase Auth 도입 (5A~5D)
+
+**목적**: 비밀번호 쿠키 방식의 옛 어드민 로그인을 Supabase Auth로 교체. 멀티테넌트 사용자/병원 매핑 기반 마련.
+
+**한 것 — 5A (스키마)**
+- `superadmins` 테이블 (SaaS 운영자)
+- `clinic_users` 테이블 (사용자-병원 매핑, 한 사용자 다중 병원 가능)
+- `clinic_change_logs.changed_by` → `auth.users` FK (계정 삭제 시 SET NULL)
+- 헬퍼 함수 `is_superadmin()`, `user_can_access_clinic(uuid)` — SECURITY DEFINER.
+
+**5B (클라이언트 분리)**
+- `@supabase/ssr ^0.10.3` 설치.
+- `lib/supabase/{server,client,service}.js` 분리. 옛 `lib/supabase.js` 삭제.
+- chat → service_role. inquiries/reply → server. login → client.
+- `.env.local` + Vercel에 `SUPABASE_SERVICE_ROLE_KEY` 추가.
+
+**5C (인증 흐름)**
+- `/login` 을 Supabase Auth (signInWithPassword)로 교체.
+- `proxy.js` (Next.js 16에서 `middleware.js` → `proxy.js`) — `/admin/*`, `/api/inquiries`, `/api/reply` 보호 + 세션 갱신.
+- 옛 비밀번호 쿠키 방식 `/api/auth` 제거.
+- 어드민 헤더에 로그아웃 버튼.
+
+**5D (계정 생성)**
+- Studio Auth Users에서 본인(superadmin) + 더퀸즈 직원(admin) 두 계정 생성 (Auto Confirm).
+- `superadmins`에 본인 user_id, `clinic_users`에 직원 user_id + thequeens 매핑 INSERT.
+
+**5E (RLS 활성화)**: 코드 준비 완료 후로 미룸 (라이브 앱 깨질 위험). 2026-05-14에 진행.
+
+### 부수 — 어드민 목록 표시 개선
+- 새 문의가 최상단에 오도록 정렬 + 날짜 표시.
+
+---
+
+## 2026-05-07
+
+### 단계 1~4 — 멀티테넌트 DB 스키마
+
+**목적**: `obgyn-demo`를 더퀸즈여성의원 단일에서 멀티테넌트 SaaS로 전환하는 첫 단계.
+
+**한 것 (마이그레이션 4개)**
+1. `20260507000000_multitenant_schema.sql` — `clinics`, `clinic_settings`, `clinic_faqs`, `clinic_change_logs` 테이블 + `set_updated_at()` 트리거.
+2. `20260507000100_add_clinic_id_to_inquiries.sql` — `inquiries.clinic_id` nullable 추가.
+3. `20260507000200_migrate_thequeens_data.sql` — 더퀸즈 1행 + settings + FAQ 6개 + 기존 inquiries 백필.
+4. `20260507000300_auth_schema.sql` — 5A 내용 (위 참조).
+
+**합의된 설계**
+- URL 식별: slug 기반 path (`/[clinic]/...`). 서브도메인은 추후.
+- `clinic_settings.settings` JSONB: hours/doctors_summary/services/features/departments/parking/reservation_note 등 가변 데이터.
+- 역할: `admin` (clinic_users) + `superadmin` (별도 테이블).
+
+**브랜치**: `multitenant` (master 기준 분기, 이때부터 생성).
+
+---
+
+## 2026-05-06
+
+### 개인정보 마스킹 추가
+
+**목적**: 환자가 챗봇에 전화번호/주민번호/성함 같은 개인정보 입력 시 LLM 호출 전 차단 + DB에는 마스킹된 형태로 저장.
+
+**한 것**
+- `containsPersonalInfo()` / `maskPersonalInfo()` 헬퍼.
+- 차단 메시지 표시 + `status='blocked'`으로 inquiries 저장.
+
+---
+
+## 2026-04-29
+
+### 1차 MVP 완성
+
+하루에 몰아서 작업:
+- 챗봇 UI + Claude API 연동 + Pusher 실시간.
+- 어드민 페이지 (문의 목록, 답변 발송).
+- Supabase `inquiries` 테이블 DB 저장.
+- 예약 링크 (반복 디버깅: 활성화 1, 2, 3, 4).
+- 모바일 반응형.
+- 토큰 절약 (시스템 프롬프트 다이어트).
+- 최신 문의 상단 정렬.
+
+이후 일주일은 미팅/검토 기간, 2026-05-06 부터 다시 작업 재개.
+
+---
+
+## 2026-04-27
+
+### 프로젝트 초기화
+
+`create-next-app`로 Next.js 16 + TailwindCSS 4 보일러플레이트 생성.
