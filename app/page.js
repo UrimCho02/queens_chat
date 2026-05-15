@@ -245,11 +245,18 @@ export default function Home() {
                   <div className="text-xs text-blue-500 font-medium mb-1">직원 답변</div>
                 )}
                 {msg.image && (
-                  <img
-                    src={msg.image}
-                    alt="이벤트 이미지"
-                    className="rounded-xl mb-2 max-w-xs max-h-64 object-contain"
-                  />
+                  <a
+                    href={msg.image}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <img
+                      src={msg.image}
+                      alt="이벤트 이미지 (클릭하면 원본 보기)"
+                      className="rounded-xl mb-2 max-w-[640px] max-h-[512px] object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                    />
+                  </a>
                 )}
                 <MessageText text={msg.text} isUser={msg.isUser} />
               </div>
