@@ -87,10 +87,13 @@ export default function Home() {
           isStaff: false,
         };
         const msgs = [greeting];
-        if (data.currentEvent) {
+        if (data.currentEvent || data.eventImageUrl) {
           msgs.push({
             id: 2,
-            text: `🎉 이번달 이벤트\n\n${data.currentEvent}`,
+            text: data.currentEvent
+              ? `🎉 이번달 이벤트\n\n${data.currentEvent}`
+              : `🎉 이번달 이벤트`,
+            image: data.eventImageUrl || null,
             isUser: false,
             isStaff: false,
             isEvent: true,
@@ -167,9 +170,9 @@ export default function Home() {
         </div>
         {isOpen !== null && (
           <div className={`text-xs px-2 py-1 rounded-full font-medium ${
-            isOpen ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"
+            isOpen ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
           }`}>
-            {isOpen ? "● 상담 가능" : "● 운영 종료"}
+            {isOpen ? "● 상담 가능" : "● AI 상담 가능"}
           </div>
         )}
       </div>
@@ -177,11 +180,11 @@ export default function Home() {
       {/* 운영 상태 안내 */}
       {isOpen !== null && (
         <div className={`px-4 py-2 text-xs text-center flex-shrink-0 ${
-          isOpen ? "bg-green-50 text-green-700" : "bg-gray-50 text-gray-500"
+          isOpen ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"
         }`}>
           {isOpen
             ? "현재 상담 직원 대기 중입니다. 편하게 질문해 주세요 😊"
-            : "현재 운영시간 외입니다. 문의 남겨주시면 운영시간 내 답변드립니다."}
+            : "현재 담당 직원은 부재중입니다. AI가 답변 가능한 부분은 바로 답변드립니다. 증상 관련 문의는 운영시간 내 직원이 답변드립니다."}
         </div>
       )}
 
@@ -211,6 +214,13 @@ export default function Home() {
             >
               {msg.isStaff && (
                 <div className="text-xs text-blue-500 font-medium mb-1">직원 답변</div>
+              )}
+              {msg.image && (
+                <img
+                  src={msg.image}
+                  alt="이벤트 이미지"
+                  className="rounded-xl mb-2 max-w-full"
+                />
               )}
               <MessageText text={msg.text} isUser={msg.isUser} />
             </div>

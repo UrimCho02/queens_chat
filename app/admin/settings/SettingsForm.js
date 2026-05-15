@@ -61,9 +61,11 @@ export default function SettingsForm({ initial }) {
     s.substitute_holiday_policy || ""
   );
   const [currentEvent, setCurrentEvent] = useState(s.current_event || "");
+  const [eventImageUrl, setEventImageUrl] = useState(s.event_image_url || "");
   const [disclaimer, setDisclaimer] = useState(s.disclaimer || "");
 
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [status, setStatus] = useState(null);
 
   const toggleClosedDay = (code) => {
@@ -82,6 +84,40 @@ export default function SettingsForm({ initial }) {
   };
   const removeHoursNote = (idx) => {
     setHoursNotes((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleImageSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    setStatus(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/clinic-assets/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus({
+          type: "error",
+          message: `오류: ${data.error || "업로드 실패"}`,
+        });
+        return;
+      }
+      setEventImageUrl(data.url);
+      setStatus({
+        type: "success",
+        message: "이미지가 업로드되었습니다. 저장을 눌러 반영하세요.",
+      });
+    } catch (err) {
+      setStatus({ type: "error", message: `오류: ${err.message}` });
+    } finally {
+      setUploadingImage(false);
+      e.target.value = "";
+      setTimeout(() => setStatus(null), 4000);
+    }
   };
 
   const handleSave = async () => {
@@ -117,6 +153,7 @@ export default function SettingsForm({ initial }) {
         substitute_holiday_policy: substituteHolidayPolicy.trim(),
       }),
       ...(currentEvent.trim() && { current_event: currentEvent.trim() }),
+      ...(eventImageUrl && { event_image_url: eventImageUrl }),
       ...(disclaimer.trim() && { disclaimer: disclaimer.trim() }),
     };
 
@@ -417,6 +454,43 @@ export default function SettingsForm({ initial }) {
             rows={2}
             placeholder="비워두면 노출 안 함. 예: 11월 한 달간 골밀도 검사 20% 할인"
           />
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-gray-500 font-medium">
+              이벤트 이미지
+            </label>
+            <div className="text-xs text-gray-400">
+              jpg/png/webp, 2MB 이하. 챗봇 인사 직후 이벤트 안내에 함께 표시됩니다.
+            </div>
+            {eventImageUrl ? (
+              <div className="relative inline-block self-start mt-1">
+                <img
+                  src={eventImageUrl}
+                  alt="이벤트 이미지"
+                  className="max-w-full max-h-48 rounded-xl border border-gray-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => setEventImageUrl("")}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs cursor-pointer hover:bg-red-600"
+                  title="이미지 제거"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <label className="self-start cursor-pointer bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600 hover:border-[#C9A96E] transition-colors mt-1">
+                {uploadingImage ? "업로드 중..." : "+ 이미지 선택"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleImageSelect}
+                  disabled={uploadingImage}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
 
           <Field
             label="면책 문구"

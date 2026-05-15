@@ -71,6 +71,7 @@ export async function GET() {
     .single();
 
   let currentEvent = "";
+  let eventImageUrl = "";
   let disclaimer = "";
   if (clinic?.id) {
     const { data: row } = await supabase
@@ -80,6 +81,7 @@ export async function GET() {
       .maybeSingle();
     const s = row?.settings || {};
     currentEvent = s.current_event || "";
+    eventImageUrl = s.event_image_url || "";
     disclaimer = s.disclaimer || "";
   }
 
@@ -87,6 +89,7 @@ export async function GET() {
     isOpen: isBusinessHours(),
     clinicName: clinic?.name || "",
     currentEvent,
+    eventImageUrl,
     disclaimer,
   });
 }

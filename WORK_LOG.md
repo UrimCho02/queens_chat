@@ -9,14 +9,41 @@
 
 진행 우선순위 순:
 
-1. **원장님 1차 요구사항 3개 — 우선순위 순**
-   - (a) 이벤트창 이미지 업로드 (Supabase Storage `clinic-assets` 버킷 + 업로드 API + 폼 + 챗봇 버블 렌더링) ← **재개 지점: Storage 버킷 생성부터**
+1. **원장님 1차 요구사항 — 남은 2개**
    - (b) 하이브리드 메뉴 UX — 챗봇 첫 화면 클릭 메뉴 카드 + 자유 입력창 (닥터챗봇 참조 이미지 확인 후 설계 확정)
    - (c) 수술 후 회복 가이드 — 어드민에서 수술별 일정(N일차 ~) 등록 → 챗봇이 "수술 N일차에 ~" 질문에 가이드 참고 답변. 가이드 없는 증상 질문은 기존 STAFF_REQUIRED 룰 유지.
 2. **단계 9** — `/admin/logs` (변경 이력 페이지). `clinic_change_logs` 시간 역순 표시 + JSONB diff 렌더링.
 3. **production 동작 검증** — queens-chat.vercel.app 에서 5E RLS 적용 후 챗봇/어드민 한 번 확인 (DB는 단일이라 RLS는 이미 production에도 반영됨).
-4. **master 머지** — 단계 6~8 + 5E 코드가 multitenant 브랜치에만 있음. 머지 타이밍 결정 필요.
-5. (기술 부채) `DAILY_LIMIT` fallback 불일치 정리 (`inquiries` 50 / `chat` 20 → 한쪽으로 통일).
+4. **master 머지** — 단계 6~8 + 5E + 이벤트 이미지 + 운영시간 문구 코드가 multitenant 브랜치에만 있음. 머지 타이밍 결정 필요.
+5. (기술 부채) 이벤트 이미지 교체/제거 시 Storage 옛 파일 cleanup (현재는 누적). 자주 안 바뀌니 우선순위 낮음.
+6. (기술 부채) `DAILY_LIMIT` fallback 불일치 정리 (`inquiries` 50 / `chat` 20 → 한쪽으로 통일).
+
+---
+
+## 2026-05-15
+
+### 원장님 요구사항 (a) — 이벤트창 이미지 업로드 완료
+
+**목적**: 어드민에서 "이번달 이벤트"에 텍스트뿐 아니라 이미지도 업로드. 챗봇 인사 직후 이벤트 버블에 이미지 함께 표시.
+
+**한 것**
+- Supabase Storage 버킷 `clinic-assets` 신규 생성 (public, 2MB 제한). 폴더 구조 `{clinic_id}/event/{uuid}.{ext}` — 멀티테넌트 격리.
+- 업로드 API `app/api/clinic-assets/upload/route.js` — getCurrentClinic 인증 → 파일 검증 (image/jpeg|png|webp, ≤2MB) → service_role로 Storage upload → public URL 반환.
+- `SettingsForm.js` 4군데 수정: state(`eventImageUrl`, `uploadingImage`), `handleImageSelect` 핸들러, newSettings에 `event_image_url`, UI 블록(미리보기 + 제거 ✕ 버튼 + 파일 input).
+- `/api/chat` GET 응답에 `eventImageUrl` 추가.
+- `app/page.js` 이벤트 메시지 객체에 `image` 필드 + 버블 렌더링에 `<img>` 표시. `currentEvent || eventImageUrl` 중 하나라도 있으면 이벤트 버블 노출.
+
+**검증 완료**: 어드민에서 업로드 → 미리보기 → 저장 → 챗봇 새로고침 → 이벤트 버블에 이미지 표시. 제거 흐름도 정상.
+
+### 챗봇 "운영 종료" 문구 변경
+
+**계기**: 운영시간 외에도 챗봇은 답을 하는데 "운영 종료"라고 표시되면 환자가 채널 닫혔다고 오해 → 떠남.
+
+**한 것** (`app/page.js`)
+- 상단 배지: `● 운영 종료` (회색) → `● AI 상담 가능` (앰버색)
+- 큰 안내 배너: "현재 운영시간 외입니다. 문의 남겨주시면 운영시간 내 답변드립니다." → "현재 담당 직원은 부재중입니다. AI가 답변 가능한 부분은 바로 답변드립니다. 증상 관련 문의는 운영시간 내 직원이 답변드립니다."
+
+**검증**: 점심시간(운영시간 외) 마침 걸려서 실제 UI에서 확인 완료.
 
 ---
 
