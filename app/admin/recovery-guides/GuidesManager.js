@@ -120,12 +120,27 @@ export default function GuidesManager({ initialGuides, clinicName }) {
           "사용" 체크된 가이드만 챗봇에 반영됩니다. 챗봇은 의학적 판단 없이
           등록된 내용을 그대로 안내하며, 가이드에 없는 일자 또는 증상 동반
           질문은 자동으로 직원 확인으로 전환됩니다.
+          <br />
+          <br />
+          <span className="text-amber-700">
+            ⚠ 등록된 가이드는 환자에게 "원장님께서 안내드린 회복 가이드"로 그대로
+            전달됩니다. <b>의학적 정확성 책임은 등록자에게 있으니</b>, 실제 진료에서
+            안내하시는 일정을 정확히 입력해 주세요.
+          </span>
         </div>
 
         {guides.length === 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">
-            아직 등록된 가이드가 없습니다. 아래 [+ 새 가이드 추가] 버튼으로
-            시작하세요.
+          <div className="bg-white rounded-2xl border border-amber-200 p-6 text-center text-sm">
+            <div className="text-gray-700 mb-2 font-medium">
+              등록된 가이드가 없습니다.
+            </div>
+            <div className="text-gray-500 leading-relaxed">
+              가이드가 비어있는 동안 챗봇은 "수술 N일차" 관련 질문을 모두 직원
+              확인으로 전환합니다.
+              <br />
+              원장님께서 환자에게 안내하시는 회복 일정을 아래
+              [+ 새 가이드 추가] 버튼으로 등록해 주세요.
+            </div>
           </div>
         )}
 
