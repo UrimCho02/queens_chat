@@ -7,18 +7,39 @@
 
 ## 다음에 해야 할 일
 
-멀티테넌트 9단계 + 원장님 1차 요구사항 전부 종료. 남은 것은 production 정리:
+멀티테넌트 9단계 + 원장님 1차 요구사항 + master 배포까지 전부 완료. 다음 세션 재개 지점 없는 깨끗한 상태. 남은 건 우선순위 낮은 기술 부채뿐:
 
-1. **production 동작 검증** — queens-chat.vercel.app 챗봇/어드민. RLS는 이미 production DB에 적용된 상태. 코드는 master 머지 후 자동 배포.
-2. **master 머지** — `multitenant` 브랜치를 master로 fast-forward. 단계 6 이후 모든 작업이 다 multitenant에만 있음.
-3. **production 동작 검증** — queens-chat.vercel.app 에서 5E RLS 적용 후 챗봇/어드민 한 번 확인 (DB는 단일이라 RLS는 이미 production에도 반영됨).
-4. **master 머지** — 단계 6~8 + 5E + 이벤트 이미지 + 운영시간 문구 코드가 multitenant 브랜치에만 있음. 머지 타이밍 결정 필요.
-5. (기술 부채) 이벤트 이미지 교체/제거 시 Storage 옛 파일 cleanup (현재는 누적). 자주 안 바뀌니 우선순위 낮음.
-6. (기술 부채) `DAILY_LIMIT` fallback 불일치 정리 (`inquiries` 50 / `chat` 20 → 한쪽으로 통일).
+1. (기술 부채) 이벤트 이미지 교체/제거 시 Storage 옛 파일 cleanup (현재는 누적). 자주 안 바뀌니 우선순위 낮음.
+2. (기술 부채) `DAILY_LIMIT` fallback 불일치 정리 (`inquiries` 50 / `chat` 20 → 한쪽으로 통일).
 
 ---
 
 ## 2026-05-15
+
+### 이벤트 이미지 UX 마무리 — 크기 미세 조정 + 클릭 원본 보기
+
+**계기**: production 배포 후 사용자가 직접 보면서 발견한 디테일.
+
+**한 것 (4번에 걸친 미세 조정)**
+- 처음 `max-w-full` (버블 78%까지 차서 데스크탑에서 거대)
+- → `max-w-[260px] max-h-48` (너무 작아 글씨 안 보임)
+- → `max-w-xs max-h-64` (320×256, 여전히 작음)
+- → `max-w-[640px] max-h-[512px]` + 클릭 시 새 탭 원본 보기 (`<a target="_blank">` 감싸기, `hover:opacity-90 cursor-pointer` 힌트) — 두 배로 키우고 클릭 기능 추가
+- → 최종 `max-w-[560px] max-h-[448px]` (모바일에서 살짝 오버되는 문제로 10% 축소)
+
+**결과**: 데스크탑 적정 크기, 모바일에서 부모 버블 78%에 의해 자연 축소, 클릭 시 원본 새 탭. 글씨 가독성 OK.
+
+---
+
+### master 머지 + Vercel 배포
+
+**한 것**: multitenant → master fast-forward (`e80fdf1 → 81dc88c`, 7 커밋 / 2159줄 변경) → `git push origin master` → Vercel 자동 빌드 → `queens-chat.vercel.app` 새 코드 반영.
+
+**검증 완료**: 챗봇/어드민 핵심 흐름 (인사+메뉴/이벤트/FAQ/회복 가이드/변경이력) production에서 동작. RLS는 이미 production DB에 5E 적용 시점부터 반영된 상태였고, 코드가 그것과 호환됨을 확인.
+
+이후 production 보정 commit들도 같은 패턴(multitenant 작업 → master fast-forward → push)으로 처리.
+
+---
 
 ### production 첫 검증 후 보정 — 이미지 크기 + 회복 가이드 시드 제거
 
@@ -30,7 +51,7 @@
 **결정**: 회복 가이드는 **100% 원장님이 직접 입력**. 시드 제거. 안전 사이드 default (가이드 없으면 모든 수술 후 질문 STAFF_REQUIRED).
 
 **한 것**
-- `app/page.js` 이벤트 이미지 클래스 `max-w-full` → `max-w-[260px] max-h-48 object-contain`. 원본이 아무리 커도 작게.
+- `app/page.js` 이벤트 이미지 1차 축소 — `max-w-full` → `max-w-[260px] max-h-48 object-contain` (이후 더 키우는 fine-tune은 위 "이벤트 이미지 UX 마무리" 참조)
 - `supabase/migrations/20260515000300_remove_seed_recovery_guides.sql` — 자궁근종 시드 DELETE. 시드 마이그레이션 자체는 히스토리 보존 위해 그대로 둠.
 - `GuidesManager.js` 강화:
   - 페이지 상단 안내에 ⚠ 경고 추가 — "등록된 가이드는 '원장님 안내'로 그대로 전달됩니다. 의학적 정확성 책임은 등록자에게."
