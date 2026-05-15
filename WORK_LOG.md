@@ -9,9 +9,7 @@
 
 진행 우선순위 순:
 
-1. **원장님 1차 요구사항 — 남은 1개**
-   - (c) 수술 후 회복 가이드 — 어드민에서 수술별 일정(N일차 ~) 등록 → 챗봇이 "수술 N일차에 ~" 질문에 가이드 참고 답변. 가이드 없는 증상 질문은 기존 STAFF_REQUIRED 룰 유지.
-2. **단계 9** — `/admin/logs` (변경 이력 페이지). `clinic_change_logs` 시간 역순 표시 + JSONB diff 렌더링.
+1. **단계 9** — `/admin/logs` (변경 이력 페이지). `clinic_change_logs` 시간 역순 표시 + JSONB diff 렌더링. 단계 7~8 + 회복 가이드까지 다 기록 쌓여있어 충분히 테스트 가능.
 3. **production 동작 검증** — queens-chat.vercel.app 에서 5E RLS 적용 후 챗봇/어드민 한 번 확인 (DB는 단일이라 RLS는 이미 production에도 반영됨).
 4. **master 머지** — 단계 6~8 + 5E + 이벤트 이미지 + 운영시간 문구 코드가 multitenant 브랜치에만 있음. 머지 타이밍 결정 필요.
 5. (기술 부채) 이벤트 이미지 교체/제거 시 Storage 옛 파일 cleanup (현재는 누적). 자주 안 바뀌니 우선순위 낮음.
@@ -20,6 +18,27 @@
 ---
 
 ## 2026-05-15
+
+### 원장님 요구사항 (c) — 수술 후 회복 가이드 완료
+
+**목적**: 원장님이 수술별 회복 일정을 미리 등록 → 챗봇이 "수술 N일차에 ~해도 되나요" 질문에 가이드 그대로 안내. 의료법 핵심: 챗봇은 의학적 판단 X, 원장님이 등록한 내용 단순 전달자. 가이드에 없는 일차/수술 + 증상 묘사 동반 질문은 STAFF_REQUIRED.
+
+**한 것**
+- **새 테이블** `clinic_recovery_guides` — id/clinic_id/name/description/items(jsonb)/sort_order/is_active. items 형태 `[{day_from, day_to?, title, content}]`. 5E 패턴 RLS 정책 4개 같이.
+- **시드** 더퀸즈 자궁근종 수술 1건 (1일/2-3일/4-6일/7-13일/14-20일/21일+ 일정 6개). 원장님 1차 미팅 때 제시한 일정 그대로.
+- **`buildPrompt.js`** Promise.all에 guides 쿼리 추가, `formatRecoveryGuides()` 헬퍼로 `[참고: 수술 후 회복 가이드]` 섹션 조립. safety 룰 뒤 + FAQ 앞에 위치.
+- **`safety.js`** warm/formal 두 톤 모두 14번 규칙 신설 — 매칭 시 가이드 그대로 안내 + "이상 증상 시 내원", 비매칭/증상동반 → STAFF_REQUIRED. 새 카테고리 `CATEGORY:수술회복` 추가.
+- **어드민 카테고리 필터** `admin/page.js`에 "수술회복" 추가 (teal 색).
+- **API** `/api/recovery-guides` POST + `[id]` PUT/DELETE. clinic-faqs 패턴. 모든 변경 `clinic_change_logs` 기록.
+- **어드민 페이지** `/admin/recovery-guides` (page + GuidesManager). FAQ 페이지 디자인 재활용. 각 가이드 카드 안에 일정 항목 동적 리스트 (day_from/day_to/title/content).
+- **헤더 메뉴** 세 어드민 페이지(`admin`, `faqs`, `settings`) 헤더에 [회복가이드] 링크 추가.
+
+**이슈와 해결**
+- dev server 재시작 시 Next.js stale lock으로 "PID 이미 띄워져 있음" 에러 (실제 PID는 죽음). `.next/dev` 캐시 삭제로 정리. 일상적 cleanup.
+
+**검증 완료**: 시드 가이드 표시 / 챗봇이 등록 일차에 가이드 그대로 답변 / 등록 안 된 일차·수술 → STAFF_REQUIRED / 증상 동반 질문 → STAFF_REQUIRED / 어드민 편집 → 챗봇 반영. 보너스: 가이드에 없는 질문 시 AI 초안에 "가이드 등록 안 됨" 표시 — 직원이 어떤 종류 질문인지 빠르게 인지.
+
+---
 
 ### 원장님 요구사항 (b) — 하이브리드 메뉴 UX 완료
 

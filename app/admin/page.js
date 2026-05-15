@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import PusherClient from "pusher-js";
 import { createClient } from "@/lib/supabase/client";
 
-const CATEGORIES = ["전체", "예약/진료시간", "비용문의", "여성성형", "피부과", "증상문의", "기타"];
+const CATEGORIES = ["전체", "예약/진료시간", "비용문의", "여성성형", "피부과", "증상문의", "수술회복", "기타"];
 
 const CATEGORY_STYLE = {
   "예약/진료시간": "bg-blue-100 text-blue-700",
@@ -12,6 +12,7 @@ const CATEGORY_STYLE = {
   "여성성형": "bg-pink-100 text-pink-700",
   "피부과": "bg-green-100 text-green-700",
   "증상문의": "bg-amber-100 text-amber-700",
+  "수술회복": "bg-teal-100 text-teal-700",
   "기타": "bg-gray-100 text-gray-600",
 };
 
@@ -145,6 +146,12 @@ export default function AdminPage() {
             className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
           >
             FAQ
+          </button>
+          <button
+            onClick={() => router.push("/admin/recovery-guides")}
+            className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
+          >
+            회복가이드
           </button>
           <button
             onClick={handleLogout}
