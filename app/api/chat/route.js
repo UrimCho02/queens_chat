@@ -73,6 +73,7 @@ export async function GET() {
   let currentEvent = "";
   let eventImageUrl = "";
   let disclaimer = "";
+  let chatMenu = null;
   if (clinic?.id) {
     const { data: row } = await supabase
       .from("clinic_settings")
@@ -83,6 +84,21 @@ export async function GET() {
     currentEvent = s.current_event || "";
     eventImageUrl = s.event_image_url || "";
     disclaimer = s.disclaimer || "";
+
+    const menu = s.chat_menu;
+    const activeItems = Array.isArray(menu?.items)
+      ? menu.items.filter((it) => it?.enabled && it?.label && it?.text)
+      : [];
+    if (activeItems.length > 0) {
+      chatMenu = {
+        header: menu.header || "궁금한 항목을 선택하세요",
+        items: activeItems.map((it) => ({
+          icon: it.icon || "",
+          label: it.label,
+          text: it.text,
+        })),
+      };
+    }
   }
 
   return Response.json({
@@ -91,6 +107,7 @@ export async function GET() {
     currentEvent,
     eventImageUrl,
     disclaimer,
+    chatMenu,
   });
 }
 

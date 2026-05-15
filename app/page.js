@@ -2,14 +2,6 @@
 import { useState, useRef, useEffect } from "react";
 import PusherClient from "pusher-js";
 
-const QUICK_BUTTONS = [
-  { label: "진료시간", text: "진료시간이 어떻게 되나요?" },
-  { label: "예약 방법", text: "예약은 어떻게 하나요?" },
-  { label: "여성성형 상담", text: "여성성형 상담을 받고 싶어요." },
-  { label: "주차 안내", text: "주차 가능한가요?" },
-  { label: "피부과 진료", text: "피부과 진료도 가능한가요?" },
-];
-
 function generateSessionId() {
   return Math.random().toString(36).substring(2, 10);
 }
@@ -97,6 +89,15 @@ export default function Home() {
             isUser: false,
             isStaff: false,
             isEvent: true,
+          });
+        }
+        if (data.chatMenu) {
+          msgs.push({
+            id: 3,
+            isUser: false,
+            isStaff: false,
+            isMenu: true,
+            menu: data.chatMenu,
           });
         }
         setMessages(msgs);
@@ -195,37 +196,66 @@ export default function Home() {
 
       {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}>
-            {!msg.isUser && (
-              <div className="w-7 h-7 rounded-full bg-[#C9A96E] flex items-center justify-center text-sm mr-2 flex-shrink-0 mt-1">
-                👑
+        {messages.map((msg) => {
+          if (msg.isMenu) {
+            return (
+              <div key={msg.id} className="flex justify-start">
+                <div className="w-7 h-7 rounded-full bg-[#C9A96E] flex items-center justify-center text-sm mr-2 flex-shrink-0 mt-1">
+                  👑
+                </div>
+                <div className="max-w-[78%] rounded-2xl overflow-hidden shadow-sm bg-white border border-gray-100">
+                  <div className="bg-[#C9A96E] text-white text-sm font-medium px-4 py-2.5">
+                    {msg.menu.header}
+                  </div>
+                  <div className="flex flex-col">
+                    {msg.menu.items.map((item, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => sendMessage(item.text)}
+                        disabled={loading}
+                        className="text-left px-4 py-3 text-sm text-gray-700 hover:bg-amber-50 active:bg-amber-100 border-t border-gray-100 first:border-t-0 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                      >
+                        {item.icon && <span>{item.icon}</span>}
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            )}
-            <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm
-              ${msg.isUser
-                ? "bg-[#C9A96E] text-white rounded-tr-sm"
-                : msg.isStaff
-                ? "bg-blue-50 border border-blue-200 text-gray-800 rounded-tl-sm"
-                : msg.isEvent
-                ? "bg-amber-50 border border-amber-200 text-gray-800 rounded-tl-sm"
-                : "bg-white text-gray-800 rounded-tl-sm"
-              }`}
-            >
-              {msg.isStaff && (
-                <div className="text-xs text-blue-500 font-medium mb-1">직원 답변</div>
+            );
+          }
+          return (
+            <div key={msg.id} className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}>
+              {!msg.isUser && (
+                <div className="w-7 h-7 rounded-full bg-[#C9A96E] flex items-center justify-center text-sm mr-2 flex-shrink-0 mt-1">
+                  👑
+                </div>
               )}
-              {msg.image && (
-                <img
-                  src={msg.image}
-                  alt="이벤트 이미지"
-                  className="rounded-xl mb-2 max-w-full"
-                />
-              )}
-              <MessageText text={msg.text} isUser={msg.isUser} />
+              <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm
+                ${msg.isUser
+                  ? "bg-[#C9A96E] text-white rounded-tr-sm"
+                  : msg.isStaff
+                  ? "bg-blue-50 border border-blue-200 text-gray-800 rounded-tl-sm"
+                  : msg.isEvent
+                  ? "bg-amber-50 border border-amber-200 text-gray-800 rounded-tl-sm"
+                  : "bg-white text-gray-800 rounded-tl-sm"
+                }`}
+              >
+                {msg.isStaff && (
+                  <div className="text-xs text-blue-500 font-medium mb-1">직원 답변</div>
+                )}
+                {msg.image && (
+                  <img
+                    src={msg.image}
+                    alt="이벤트 이미지"
+                    className="rounded-xl mb-2 max-w-full"
+                  />
+                )}
+                <MessageText text={msg.text} isUser={msg.isUser} />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {loading && (
           <div className="flex justify-start">
@@ -238,20 +268,6 @@ export default function Home() {
           </div>
         )}
         <div ref={messagesEndRef} />
-      </div>
-
-      {/* 빠른 버튼 */}
-      <div className="px-3 py-2 flex gap-2 overflow-x-auto flex-shrink-0 bg-white border-t border-gray-100">
-        {QUICK_BUTTONS.map((btn) => (
-          <button
-            key={btn.label}
-            onClick={() => sendMessage(btn.text)}
-            disabled={loading}
-            className="flex-shrink-0 bg-amber-50 border border-amber-200 rounded-full px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-100 disabled:opacity-50 active:bg-amber-200"
-          >
-            {btn.label}
-          </button>
-        ))}
       </div>
 
       {/* 입력창 */}

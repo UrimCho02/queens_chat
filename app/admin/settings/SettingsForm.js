@@ -64,6 +64,20 @@ export default function SettingsForm({ initial }) {
   const [eventImageUrl, setEventImageUrl] = useState(s.event_image_url || "");
   const [disclaimer, setDisclaimer] = useState(s.disclaimer || "");
 
+  const [chatMenuHeader, setChatMenuHeader] = useState(
+    s.chat_menu?.header || "궁금한 항목을 선택하세요"
+  );
+  const [chatMenuItems, setChatMenuItems] = useState(
+    Array.isArray(s.chat_menu?.items)
+      ? s.chat_menu.items.map((it) => ({
+          icon: it?.icon || "",
+          label: it?.label || "",
+          text: it?.text || "",
+          enabled: it?.enabled !== false,
+        }))
+      : []
+  );
+
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [status, setStatus] = useState(null);
@@ -84,6 +98,21 @@ export default function SettingsForm({ initial }) {
   };
   const removeHoursNote = (idx) => {
     setHoursNotes((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const addMenuItem = () => {
+    setChatMenuItems((prev) => [
+      ...prev,
+      { icon: "", label: "", text: "", enabled: true },
+    ]);
+  };
+  const updateMenuItem = (idx, field, value) => {
+    setChatMenuItems((prev) =>
+      prev.map((it, i) => (i === idx ? { ...it, [field]: value } : it))
+    );
+  };
+  const removeMenuItem = (idx) => {
+    setChatMenuItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleImageSelect = async (e) => {
@@ -128,6 +157,15 @@ export default function SettingsForm({ initial }) {
       .map((n) => ({ text: n.text.trim(), enabled: !!n.enabled }))
       .filter((n) => n.text);
 
+    const cleanedMenuItems = chatMenuItems
+      .map((it) => ({
+        icon: (it.icon || "").trim(),
+        label: (it.label || "").trim(),
+        text: (it.text || "").trim(),
+        enabled: !!it.enabled,
+      }))
+      .filter((it) => it.label && it.text);
+
     const newSettings = {
       tone,
       hours: {
@@ -155,6 +193,12 @@ export default function SettingsForm({ initial }) {
       ...(currentEvent.trim() && { current_event: currentEvent.trim() }),
       ...(eventImageUrl && { event_image_url: eventImageUrl }),
       ...(disclaimer.trim() && { disclaimer: disclaimer.trim() }),
+      ...(cleanedMenuItems.length > 0 && {
+        chat_menu: {
+          header: chatMenuHeader.trim() || "궁금한 항목을 선택하세요",
+          items: cleanedMenuItems,
+        },
+      }),
     };
 
     if (Object.keys(newSettings.hours).length === 0) delete newSettings.hours;
@@ -500,6 +544,81 @@ export default function SettingsForm({ initial }) {
             rows={2}
             placeholder="예: 본 채널은 일반 안내용이며 진료를 대신할 수 없습니다."
           />
+        </Section>
+
+        <Section
+          title="챗봇 빠른 메뉴"
+          hint="환자가 첫 화면에서 클릭으로 빠르게 질문할 수 있는 메뉴입니다. '사용' 체크된 항목만 챗봇에 표시됩니다."
+        >
+          <Field
+            label="카드 헤더"
+            value={chatMenuHeader}
+            onChange={setChatMenuHeader}
+            placeholder="궁금한 항목을 선택하세요"
+          />
+
+          <div className="flex flex-col gap-2">
+            {chatMenuItems.map((item, idx) => (
+              <div key={idx} className="bg-gray-50 rounded-xl p-3 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={item.icon}
+                    onChange={(e) => updateMenuItem(idx, "icon", e.target.value)}
+                    placeholder="📅"
+                    maxLength={2}
+                    className="w-12 border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-[#C9A96E] text-center"
+                  />
+                  <input
+                    type="text"
+                    value={item.label}
+                    onChange={(e) => updateMenuItem(idx, "label", e.target.value)}
+                    placeholder="라벨 (예: 진료시간)"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[#C9A96E]"
+                  />
+                  <label
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer border transition-colors ${
+                      item.enabled
+                        ? "bg-[#C9A96E] text-white border-[#C9A96E]"
+                        : "bg-white text-gray-500 border-gray-200"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={item.enabled}
+                      onChange={(e) =>
+                        updateMenuItem(idx, "enabled", e.target.checked)
+                      }
+                      className="hidden"
+                    />
+                    사용
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => removeMenuItem(idx)}
+                    className="text-gray-300 hover:text-red-500 cursor-pointer px-1"
+                    title="삭제"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={item.text}
+                  onChange={(e) => updateMenuItem(idx, "text", e.target.value)}
+                  placeholder="자동 입력될 질문 (예: 진료시간이 어떻게 되나요?)"
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[#C9A96E]"
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addMenuItem}
+              className="self-start text-xs text-[#C9A96E] hover:underline cursor-pointer mt-1"
+            >
+              + 메뉴 추가
+            </button>
+          </div>
         </Section>
       </div>
 
