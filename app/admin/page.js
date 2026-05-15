@@ -154,6 +154,12 @@ export default function AdminPage() {
             회복가이드
           </button>
           <button
+            onClick={() => router.push("/admin/logs")}
+            className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
+          >
+            변경이력
+          </button>
+          <button
             onClick={handleLogout}
             className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
           >

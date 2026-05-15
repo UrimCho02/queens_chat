@@ -7,9 +7,10 @@
 
 ## 다음에 해야 할 일
 
-진행 우선순위 순:
+멀티테넌트 9단계 + 원장님 1차 요구사항 전부 종료. 남은 것은 production 정리:
 
-1. **단계 9** — `/admin/logs` (변경 이력 페이지). `clinic_change_logs` 시간 역순 표시 + JSONB diff 렌더링. 단계 7~8 + 회복 가이드까지 다 기록 쌓여있어 충분히 테스트 가능.
+1. **production 동작 검증** — queens-chat.vercel.app 챗봇/어드민. RLS는 이미 production DB에 적용된 상태. 코드는 master 머지 후 자동 배포.
+2. **master 머지** — `multitenant` 브랜치를 master로 fast-forward. 단계 6 이후 모든 작업이 다 multitenant에만 있음.
 3. **production 동작 검증** — queens-chat.vercel.app 에서 5E RLS 적용 후 챗봇/어드민 한 번 확인 (DB는 단일이라 RLS는 이미 production에도 반영됨).
 4. **master 머지** — 단계 6~8 + 5E + 이벤트 이미지 + 운영시간 문구 코드가 multitenant 브랜치에만 있음. 머지 타이밍 결정 필요.
 5. (기술 부채) 이벤트 이미지 교체/제거 시 Storage 옛 파일 cleanup (현재는 누적). 자주 안 바뀌니 우선순위 낮음.
@@ -18,6 +19,21 @@
 ---
 
 ## 2026-05-15
+
+### 단계 9 완료 — `/admin/logs` 변경 이력 페이지
+
+**목적**: 단계 5A부터 박아둔 `clinic_change_logs` 데이터를 어드민이 직접 볼 수 있게. 누가/언제/어디서/무엇을 바꿨는지 추적.
+
+**한 것**
+- `lib/utils/diffJsonb.js` — before/after JSONB 비교 헬퍼. create/delete/update 케이스 모두 처리. id/clinic_id/created_at/updated_at 등 메타 컬럼은 노이즈 제거 위해 항상 제외.
+- `/admin/logs/page.js` — 서버 컴포넌트. 본인 clinic의 logs 최근 50건 조회 (시간 역순).
+- `/admin/logs/LogsList.js` — 클라이언트 컴포넌트. 행 클릭 펼침/접기. table_name/action별 한국어 라벨 + 색상 매핑.
+- 변경된 필드만 "필드명: 빨강(옛) → 초록(새)" 두 박스. JSONB 객체/배열은 `JSON.stringify(_, null, 2)` 로 pre 블록.
+- 네 어드민 페이지(`admin`, `faqs`, `settings`, `recovery-guides`) 헤더에 [변경이력] 링크 추가.
+
+**검증 완료**: 단계 7~8 + 회복 가이드 작업으로 쌓인 로그 시간순 표시 / 추가·수정·삭제 세 액션 다 정상 / JSONB diff 깨지지 않음 / 메타 컬럼 안 보임 / 헤더 네 곳 모두 진입 가능.
+
+---
 
 ### 원장님 요구사항 (c) — 수술 후 회복 가이드 완료
 
