@@ -248,7 +248,7 @@ export default function Home() {
                   <img
                     src={msg.image}
                     alt="이벤트 이미지"
-                    className="rounded-xl mb-2 max-w-[260px] max-h-48 object-contain"
+                    className="rounded-xl mb-2 max-w-xs max-h-64 object-contain"
                   />
                 )}
                 <MessageText text={msg.text} isUser={msg.isUser} />
