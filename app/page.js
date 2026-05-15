@@ -254,7 +254,7 @@ export default function Home() {
                     <img
                       src={msg.image}
                       alt="이벤트 이미지 (클릭하면 원본 보기)"
-                      className="rounded-xl mb-2 max-w-[640px] max-h-[512px] object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                      className="rounded-xl mb-2 max-w-[560px] max-h-[448px] object-contain cursor-pointer hover:opacity-90 transition-opacity"
                     />
                   </a>
                 )}
