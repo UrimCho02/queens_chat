@@ -304,9 +304,6 @@ export default async function ClinicHomepage({ params }) {
       {/* Footer */}
       <footer className="border-t border-gray-100">
         <div className="max-w-5xl mx-auto px-4 py-8 text-center text-xs text-gray-500 space-y-2">
-          {s.disclaimer && (
-            <p className="max-w-2xl mx-auto leading-relaxed">{s.disclaimer}</p>
-          )}
           <p>
             © {new Date().getFullYear()} {clinic.name}. All rights reserved.
           </p>
