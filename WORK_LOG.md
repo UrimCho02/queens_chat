@@ -15,6 +15,10 @@
 - 챗봇(`/`) 도 slug 기반 라우팅(`/[slug]/chat` 또는 query param)으로 동적 전환 — 현재 `chat/route.js`의 `CLINIC_SLUG = "thequeens"` 하드코딩. 신규 병원 들어오면 같이 분기 필요.
 - 신규 병원 온보딩 흐름 (clinics INSERT + 직원 계정 생성 + 기본 settings seed) — superadmin 페이지 또는 SQL 가이드.
 
+## 검토 대기 (의사결정 필요)
+
+- **챗봇 메뉴 다단계화 (서브메뉴)** — 닥터챗봇 참고. 현재 `chat_menu.items`는 단층(클릭 → 자동 입력). 닥터챗봇은 클릭 → 서브 카테고리 펼침. 결정 사항: (1) 환자 UX 가치가 충분한지 (현재 단층이 단순/명료) (2) 데이터 모델 — items에 `children` 배열 / 별도 메뉴 트리 테이블. 원장님 논의 후 결정.
+
 ---
 
 ## 2026-05-18
