@@ -7,11 +7,43 @@
 
 ## 다음에 해야 할 일
 
-병원 홈페이지 1페이지 템플릿 `/[slug]/` — clinic_settings 데이터 재활용. 헤더 / Hero(slogan+챗봇 CTA) / 진료시간 / 의료진 / 진료과목 / 이벤트 / 위치·주차 / 푸터. 우하단 챗봇 임베드.
+깨끗한 상태. 다음 우선순위:
+- 챗봇(`/`) 도 slug 기반 라우팅(`/[slug]/chat` 또는 query param)으로 동적 전환 — 현재 `chat/route.js`의 `CLINIC_SLUG = "thequeens"` 하드코딩. 신규 병원 들어오면 같이 분기 필요.
+- 신규 병원 온보딩 흐름 (clinics INSERT + 직원 계정 생성 + 기본 settings seed) — superadmin 페이지 또는 SQL 가이드.
 
 ---
 
 ## 2026-05-18
+
+### 병원 홈페이지 1페이지 템플릿 — `/[slug]/`
+
+**목적**: ClinicTalk 가입 병원이 별도 홈페이지 제작 비용 없이 사용할 수 있는 정적 1페이지. clinic_settings 데이터 그대로 재활용 → 어드민 설정 변경 → 홈페이지/챗봇 양쪽 즉시 반영.
+
+**한 것**
+- `app/[slug]/page.js` — 서버 컴포넌트. slug → clinics(is_active) + clinic_settings 조회 → 1페이지 렌더. 없으면 notFound().
+- 섹션 구성 (settings에 값 있을 때만 노출):
+  - 헤더 (sticky, 병원명 / 전화 tel: / 예약 링크)
+  - Hero (브랜드 골드 그라데이션 배경, slogan / 의료진 한 줄 / 챗봇 CTA + 예약 CTA)
+  - 이벤트 (current_event + event_image_url, 클릭 시 원본 새 탭)
+  - 진료시간 (weekday/saturday/lunch/closed + hours_notes enabled + substitute_holiday_policy)
+  - 진료 안내 (departments + services 2열)
+  - 병원 특징 (features 카드)
+  - 찾아오시는 길 (address + parking + reservation_note)
+  - 푸터 (disclaimer + copyright + "powered by ClinicTalk")
+- `app/[slug]/ChatWidget.js` — 클라이언트 컴포넌트. 우하단 floating 💬 버튼, 클릭 시 iframe 패널(현재 챗봇 `/`) 토글. `data-clinictalk-open` 속성 가진 element 도 자동 listen (Hero CTA 버튼 재활용).
+- `generateMetadata` — 병원명을 `<title>`에 넣어 SEO/공유 미리보기.
+- proxy.js matcher 영향 없음 (admin/api 경로만 보호) → 비인증 공개 가능.
+
+**설계 결정**
+- 단일 1페이지 (멀티 페이지 X) — 데이터 모델 변경 불필요, 어드민 작업량 최소.
+- 챗봇 임베드는 same-origin iframe (`/`). 추후 챗봇이 slug 분기되면 src 만 교체.
+- 충돌 검증: 정적 라우트(`/admin`, `/login`, `/api/*`)가 동적 `/[slug]`보다 우선 → 충돌 없음.
+
+**검증 필요 (사용자)**
+- `npm run dev` → `http://localhost:3000/thequeens` 접근 → 섹션별 노출/숨김/이벤트 이미지/챗봇 위젯 열림.
+- 존재하지 않는 slug (`/foo`) → 404.
+
+---
 
 ### 기술 부채 정리 — Storage cleanup + DAILY_LIMIT 통일
 
