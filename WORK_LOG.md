@@ -7,10 +7,24 @@
 
 ## 다음에 해야 할 일
 
-멀티테넌트 9단계 + 원장님 1차 요구사항 + master 배포까지 전부 완료. 다음 세션 재개 지점 없는 깨끗한 상태. 남은 건 우선순위 낮은 기술 부채뿐:
+병원 홈페이지 1페이지 템플릿 `/[slug]/` — clinic_settings 데이터 재활용. 헤더 / Hero(slogan+챗봇 CTA) / 진료시간 / 의료진 / 진료과목 / 이벤트 / 위치·주차 / 푸터. 우하단 챗봇 임베드.
 
-1. (기술 부채) 이벤트 이미지 교체/제거 시 Storage 옛 파일 cleanup (현재는 누적). 자주 안 바뀌니 우선순위 낮음.
-2. (기술 부채) `DAILY_LIMIT` fallback 불일치 정리 (`inquiries` 50 / `chat` 20 → 한쪽으로 통일).
+---
+
+## 2026-05-18
+
+### 기술 부채 정리 — Storage cleanup + DAILY_LIMIT 통일
+
+**한 것**
+1. **이벤트 이미지 cleanup** (`app/api/clinic-settings/route.js`)
+   - settings 저장 시 `settings.event_image_url` before/after 비교.
+   - 변경됐고 옛 URL이 있으면 Storage `clinic-assets`에서 해당 파일 삭제.
+   - 격리 방어: 추출한 path가 `{clinic.id}/` 로 시작할 때만 삭제 (service_role이라 다 지울 수 있지만 안전장치).
+   - cleanup 실패는 console.error만 — 저장은 진행 (best-effort).
+2. **DAILY_LIMIT fallback 통일** (`app/api/inquiries/route.js`)
+   - 50 → 20 두 군데(GET 응답 + catch fallback). Vercel env `DAILY_LIMIT=20` 및 chat route와 일치.
+
+**왜 묶었나**: 둘 다 우선순위 낮은 기술 부채로 메모리에만 남아있던 항목. 홈페이지 템플릿 작업 전에 깨끗한 베이스 만들기 위해 같이 처리.
 
 ---
 

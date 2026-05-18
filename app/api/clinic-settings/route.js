@@ -5,6 +5,17 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { getCurrentClinic } from "@/lib/auth/getCurrentClinic";
 
+const ASSET_BUCKET = "clinic-assets";
+
+// public URL → bucket 내부 path. 다른 도메인/버킷이면 null.
+function extractAssetPath(url) {
+  if (!url || typeof url !== "string") return null;
+  const marker = `/${ASSET_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  if (idx === -1) return null;
+  return url.slice(idx + marker.length);
+}
+
 export async function POST(request) {
   try {
     const { user, clinic } = await getCurrentClinic();
@@ -52,6 +63,20 @@ export async function POST(request) {
       });
 
     if (settingsUpsertErr) throw settingsUpsertErr;
+
+    // 옛 이벤트 이미지 cleanup — URL 이 바뀌거나 비워졌으면 Storage 파일 삭제.
+    // 본인 clinic 폴더(`{clinic.id}/`) 내부 경로만 지움 (격리 방어).
+    const oldImageUrl = settingsBefore?.settings?.event_image_url || "";
+    const newImageUrl = settings?.event_image_url || "";
+    if (oldImageUrl && oldImageUrl !== newImageUrl) {
+      const path = extractAssetPath(oldImageUrl);
+      if (path && path.startsWith(`${clinic.id}/`)) {
+        const { error: removeErr } = await service.storage
+          .from(ASSET_BUCKET)
+          .remove([path]);
+        if (removeErr) console.error("asset cleanup error:", removeErr);
+      }
+    }
 
     // change log
     const clinicAfter = { name, phone, address };

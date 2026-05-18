@@ -21,11 +21,11 @@ export async function GET() {
     return Response.json({
       inquiries: data,
       todayCount: todayCount || 0,
-      dailyLimit: parseInt(process.env.DAILY_LIMIT) || 50,
+      dailyLimit: parseInt(process.env.DAILY_LIMIT) || 20,
     });
   } catch (error) {
     console.error("DB 조회 오류:", error);
-    return Response.json({ inquiries: [], todayCount: 0, dailyLimit: 50 });
+    return Response.json({ inquiries: [], todayCount: 0, dailyLimit: 20 });
   }
 }
 
