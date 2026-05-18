@@ -7,7 +7,11 @@
 
 ## 다음에 해야 할 일
 
-깨끗한 상태. 다음 우선순위:
+홈페이지 템플릿 v2 (사용자 피드백 2026-05-18 반영):
+- **의료진 소개 섹션**: 현재 `doctors_summary` 한 줄만 있음 → 의료진별 이름/직책/이력/사진 데이터 모델 필요. 새 테이블 `clinic_doctors` (id/clinic_id/name/title/bio/photo_url/sort_order/is_active) + 어드민 페이지 + 홈페이지 카드 섹션.
+- **기본 메뉴 (헤더 nav)**: 현재 헤더에 병원명 + 전화 + 예약만 있음 → 섹션 anchor link (소개 / 진료시간 / 진료과목 / 의료진 / 위치). 1페이지 내 스크롤. 작은 작업.
+
+그 외 우선순위:
 - 챗봇(`/`) 도 slug 기반 라우팅(`/[slug]/chat` 또는 query param)으로 동적 전환 — 현재 `chat/route.js`의 `CLINIC_SLUG = "thequeens"` 하드코딩. 신규 병원 들어오면 같이 분기 필요.
 - 신규 병원 온보딩 흐름 (clinics INSERT + 직원 계정 생성 + 기본 settings seed) — superadmin 페이지 또는 SQL 가이드.
 
