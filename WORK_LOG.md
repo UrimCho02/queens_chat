@@ -11,6 +11,17 @@
 - **의료진 소개 섹션**: 현재 `doctors_summary` 한 줄만 있음 → 의료진별 이름/직책/이력/사진 데이터 모델 필요. 새 테이블 `clinic_doctors` (id/clinic_id/name/title/bio/photo_url/sort_order/is_active) + 어드민 페이지 + 홈페이지 카드 섹션.
 - **기본 메뉴 (헤더 nav)**: 현재 헤더에 병원명 + 전화 + 예약만 있음 → 섹션 anchor link (소개 / 진료시간 / 진료과목 / 의료진 / 위치). 1페이지 내 스크롤. 작은 작업.
 
+홈페이지 v2 작업 후속 (어드민에서 직접 입력 필요):
+- /admin/settings 에서 다음 값들 새로 입력/저장:
+  - 의료진 요약 → "15년 이상 경력의 산부인과 전문의(여의사) 진료"
+  - 진료과목 → "산부인과" (피부관리시술 제거)
+  - 주요 진료 항목 → 부인과 진료 / 임신·피임 / 여성검진 / 여성성형·시술 / 예방접종·영양수액
+  - 병원의 특별함 → 그룹 2개 ("전문성, 편안함, 신뢰" 3항목 + "환자 중심의 병원" 2항목)
+  - 진료시간 부가 안내에 "석가탄신일 대체공휴일은 정상진료(10:00-19:00)합니다." 추가
+  - 토요일 진료시간 옆에 "(점심시간 없음)" 명시
+  - 로고 업로드 (`더퀸즈여성의원_9월(바뀐거설명).jpg`)
+  - 공지 이미지 (이달의 이벤트, 진료 일정/임시변경사항) 등록
+
 그 외 우선순위:
 - 챗봇(`/`) 도 slug 기반 라우팅(`/[slug]/chat` 또는 query param)으로 동적 전환 — 현재 `chat/route.js`의 `CLINIC_SLUG = "thequeens"` 하드코딩. 신규 병원 들어오면 같이 분기 필요.
 - 신규 병원 온보딩 흐름 (clinics INSERT + 직원 계정 생성 + 기본 settings seed) — superadmin 페이지 또는 SQL 가이드.
@@ -18,6 +29,52 @@
 ## 검토 대기 (의사결정 필요)
 
 - **챗봇 메뉴 다단계화 (서브메뉴)** — 닥터챗봇 참고. 현재 `chat_menu.items`는 단층(클릭 → 자동 입력). 닥터챗봇은 클릭 → 서브 카테고리 펼침. 결정 사항: (1) 환자 UX 가치가 충분한지 (현재 단층이 단순/명료) (2) 데이터 모델 — items에 `children` 배열 / 별도 메뉴 트리 테이블. 원장님 논의 후 결정.
+
+---
+
+## 2026-05-19
+
+### 홈페이지 v2 — 로고 / NOTICE 다중 이미지 / 특별함 그룹 구조 / 텍스트 정리
+
+**목적**: 사용자 2차 피드백 반영. 더퀸즈 운영자가 어드민에서 로고/공지/특별함 카테고리를 직접 관리할 수 있도록 데이터 모델·UI 확장.
+
+**한 것**
+- DB: `supabase/migrations/20260519000000_add_logo_url_to_clinics.sql` — `clinics.logo_url` 컬럼 추가. **사용자가 Studio SQL Editor에 적용해야 함**.
+- `app/api/clinic-assets/upload/route.js` — `kind` form field(logo/notice/event) 분기. 폴더 구조 `{clinic_id}/{kind}/`로 격리.
+- `app/api/clinic-settings/route.js` — POST 바디에 `logo_url` 받기. Storage cleanup 확장: 옛 로고 + 옛 event_image_url + 사라진 notices[] image_url 모두 본인 clinic 폴더 한정으로 삭제.
+- `app/admin/settings/page.js` — `logo_url` 초기값 전달.
+- `app/admin/settings/SettingsForm.js` 전면 개편:
+  - **기본 정보 섹션**에 로고 업로드 카드 추가 (단일 이미지, 미리보기 + 제거 + 새로 업로드).
+  - 이벤트 단일 이미지 섹션 제거 → 별도 **공지 이미지 (홈페이지)** 섹션 신설. 다중 업로드, 순서 변경(←/→), 개별 삭제 지원. "이번달 이벤트" 텍스트는 챗봇용으로 분리해서 유지.
+  - **병원 특별함** (옛 "병원 특징") — `string[]` → `[{title, items[]}]` 그룹 구조. 그룹 제목 + 항목 textarea + 그룹 추가/삭제. 기존 평평 배열은 단일 그룹(제목 빈 값)으로 자동 wrap.
+  - 토요일 placeholder를 "09:00-13:00 (점심시간 없음)"로 가이드.
+- `app/[slug]/page.js` 홈페이지:
+  - 헤더: 왕관 이모티콘 → `clinic.logo_url` 이미지 (없으면 fallback). 병원명 폰트 키움.
+  - Hero: 로고 큼직 노출 + 병원명 별도 라인 강조.
+  - "예약 페이지로" → "진료 예약" 두 군데 모두 변경.
+  - EVENT 섹션 → NOTICE 섹션. notices 개수에 따라 1/2/3열 grid 자동 분기. 이미지 클릭 시 원본 새 탭.
+  - WHY US 제목 → `{병원명}의 특별함`. 그룹별 제목 + 카드 그리드.
+  - features 신구 구조 호환 정규화(`normalizeFeatureGroups`), notices 신구 호환(`normalizeNotices`).
+- `lib/prompts/buildPrompt.js` — `flattenFeatures()` 추가. 그룹 제목은 `■`로, 항목은 `-`로 [병원 특징] 섹션에 직렬화. string[] 호환 유지.
+- `npm run build` 통과 확인.
+
+**이슈/주의**
+- 마이그레이션은 사용자가 Supabase Studio SQL Editor에 직접 적용해야 함. 미적용 상태로 admin 저장 시 `logo_url` UPDATE에서 컬럼 없음 오류.
+- 텍스트 컨텐츠(의료진 요약, 진료과목, 주요 진료 항목, 특별함 그룹, 석가탄신일 안내)는 마이그레이션 시드 대신 어드민에서 직접 입력하기로. 화면 보면서 미세 조정 가능. 위 "다음에 해야 할 일"에 체크리스트로 정리.
+- 로고 이미지는 흰 배경 jpg (블로그 캡처). 추후 투명 png 확보 시 교체 권장.
+
+### 후속 — 챗봇 환영 이미지 필드 분리
+
+**문제**: 위 SettingsForm 개편에서 "이벤트 이미지" 업로드 UI를 제거하고 공지(notices[])로 통합했더니, 챗봇 GET (`/api/chat`)이 여전히 settings.event_image_url을 읽는데 신규 저장 시 그 키가 빠져서 챗봇 환영 이미지가 미노출.
+
+**결정**: 챗봇 전용 단일 이미지 필드 유지. 홈페이지 공지(notices[])와 의미·source 모두 분리.
+
+**한 것**
+- `SettingsForm.js`: eventImageUrl state / "챗봇 환영 이미지" 섹션 부활 (챗봇 설정 섹션 내, "이번달 이벤트 텍스트" 아래). 안내 문구에 "홈페이지 공지 이미지와는 별도" 명시. 업로드 kind="event".
+- `SettingsForm.js / page.js`: notices 정규화에서 event_image_url fallback 제거. 두 필드가 자동으로 섞이지 않도록.
+- handleSave에 `event_image_url` 다시 포함.
+
+**주의**: 사용자가 첫 admin 저장 이미 진행한 상태였으므로 옛 event_image_url이 settings에서 빠지고, clinic-settings POST의 cleanup 로직이 Storage에서도 옛 파일을 삭제했을 가능성 있음. → 사용자가 "챗봇 환영 이미지"에 새로 업로드해야 챗봇에 다시 노출.
 
 ---
 

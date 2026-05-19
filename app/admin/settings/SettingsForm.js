@@ -24,6 +24,31 @@ function arrayToLines(arr) {
   return (arr || []).join("\n");
 }
 
+// features 초기화: 신구 구조 모두 지원.
+// 신: [{title, items: string[]}]
+// 구: string[] → 단일 그룹으로 wrap (제목 비움)
+function initFeatureGroups(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  if (typeof raw[0] === "string") {
+    return [{ title: "", items: raw.filter(Boolean) }];
+  }
+  return raw
+    .filter((g) => g && (g.title || (g.items || []).length))
+    .map((g) => ({
+      title: g.title || "",
+      items: Array.isArray(g.items) ? g.items.filter(Boolean) : [],
+    }));
+}
+
+// 홈페이지 공지 이미지. settings.notices = [{image_url}]
+// event_image_url은 챗봇 환영 이미지 전용이라 자동 fallback 안 함.
+function initNotices(s) {
+  if (!Array.isArray(s.notices)) return [];
+  return s.notices
+    .filter((n) => n && n.image_url)
+    .map((n) => ({ image_url: n.image_url }));
+}
+
 export default function SettingsForm({ initial }) {
   const router = useRouter();
   const s = initial.settings || {};
@@ -32,6 +57,7 @@ export default function SettingsForm({ initial }) {
   const [name, setName] = useState(initial.name);
   const [phone, setPhone] = useState(initial.phone);
   const [address, setAddress] = useState(initial.address);
+  const [logoUrl, setLogoUrl] = useState(initial.logo_url || "");
   const [slogan, setSlogan] = useState(initial.slogan);
   const [bookingUrl, setBookingUrl] = useState(initial.booking_url);
 
@@ -46,7 +72,7 @@ export default function SettingsForm({ initial }) {
 
   const [departments, setDepartments] = useState(arrayToLines(s.departments));
   const [services, setServices] = useState(arrayToLines(s.services));
-  const [features, setFeatures] = useState(arrayToLines(s.features));
+  const [featureGroups, setFeatureGroups] = useState(initFeatureGroups(s.features));
 
   const [tone, setTone] = useState(s.tone === "formal" ? "formal" : "warm");
   const [hoursNotes, setHoursNotes] = useState(
@@ -62,6 +88,7 @@ export default function SettingsForm({ initial }) {
   );
   const [currentEvent, setCurrentEvent] = useState(s.current_event || "");
   const [eventImageUrl, setEventImageUrl] = useState(s.event_image_url || "");
+  const [notices, setNotices] = useState(initNotices(s));
   const [disclaimer, setDisclaimer] = useState(s.disclaimer || "");
 
   const [chatMenuHeader, setChatMenuHeader] = useState(
@@ -79,7 +106,9 @@ export default function SettingsForm({ initial }) {
   );
 
   const [saving, setSaving] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingEvent, setUploadingEvent] = useState(false);
+  const [uploadingNotice, setUploadingNotice] = useState(false);
   const [status, setStatus] = useState(null);
 
   const toggleClosedDay = (code) => {
@@ -115,35 +144,115 @@ export default function SettingsForm({ initial }) {
     setChatMenuItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleImageSelect = async (e) => {
+  // 그룹 조작
+  const addFeatureGroup = () => {
+    setFeatureGroups((prev) => [...prev, { title: "", items: [] }]);
+  };
+  const removeFeatureGroup = (idx) => {
+    setFeatureGroups((prev) => prev.filter((_, i) => i !== idx));
+  };
+  const updateFeatureGroupTitle = (idx, value) => {
+    setFeatureGroups((prev) =>
+      prev.map((g, i) => (i === idx ? { ...g, title: value } : g))
+    );
+  };
+  const updateFeatureGroupItems = (idx, value) => {
+    setFeatureGroups((prev) =>
+      prev.map((g, i) =>
+        i === idx ? { ...g, items: linesToArray(value) } : g
+      )
+    );
+  };
+
+  // 공지 조작
+  const removeNotice = (idx) => {
+    setNotices((prev) => prev.filter((_, i) => i !== idx));
+  };
+  const moveNotice = (idx, delta) => {
+    setNotices((prev) => {
+      const next = [...prev];
+      const target = idx + delta;
+      if (target < 0 || target >= next.length) return prev;
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  };
+
+  const uploadAsset = async (file, kind) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("kind", kind);
+    const res = await fetch("/api/clinic-assets/upload", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "업로드 실패");
+    return data.url;
+  };
+
+  const handleLogoSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingImage(true);
+    setUploadingLogo(true);
     setStatus(null);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/clinic-assets/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setStatus({
-          type: "error",
-          message: `오류: ${data.error || "업로드 실패"}`,
-        });
-        return;
-      }
-      setEventImageUrl(data.url);
+      const url = await uploadAsset(file, "logo");
+      setLogoUrl(url);
       setStatus({
         type: "success",
-        message: "이미지가 업로드되었습니다. 저장을 눌러 반영하세요.",
+        message: "로고가 업로드되었습니다. 저장을 눌러 반영하세요.",
       });
     } catch (err) {
       setStatus({ type: "error", message: `오류: ${err.message}` });
     } finally {
-      setUploadingImage(false);
+      setUploadingLogo(false);
+      e.target.value = "";
+      setTimeout(() => setStatus(null), 4000);
+    }
+  };
+
+  const handleEventImageSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingEvent(true);
+    setStatus(null);
+    try {
+      const url = await uploadAsset(file, "event");
+      setEventImageUrl(url);
+      setStatus({
+        type: "success",
+        message: "챗봇 환영 이미지가 업로드되었습니다. 저장을 눌러 반영하세요.",
+      });
+    } catch (err) {
+      setStatus({ type: "error", message: `오류: ${err.message}` });
+    } finally {
+      setUploadingEvent(false);
+      e.target.value = "";
+      setTimeout(() => setStatus(null), 4000);
+    }
+  };
+
+  const handleNoticeSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploadingNotice(true);
+    setStatus(null);
+    try {
+      const uploaded = [];
+      for (const file of files) {
+        const url = await uploadAsset(file, "notice");
+        uploaded.push({ image_url: url });
+      }
+      setNotices((prev) => [...prev, ...uploaded]);
+      setStatus({
+        type: "success",
+        message: `공지 이미지 ${uploaded.length}개 추가됨. 저장을 눌러 반영하세요.`,
+      });
+    } catch (err) {
+      setStatus({ type: "error", message: `오류: ${err.message}` });
+    } finally {
+      setUploadingNotice(false);
       e.target.value = "";
       setTimeout(() => setStatus(null), 4000);
     }
@@ -166,6 +275,17 @@ export default function SettingsForm({ initial }) {
       }))
       .filter((it) => it.label && it.text);
 
+    const cleanedFeatureGroups = featureGroups
+      .map((g) => ({
+        title: (g.title || "").trim(),
+        items: (g.items || []).map((x) => x.trim()).filter(Boolean),
+      }))
+      .filter((g) => g.items.length > 0);
+
+    const cleanedNotices = notices
+      .map((n) => ({ image_url: n.image_url }))
+      .filter((n) => n.image_url);
+
     const newSettings = {
       tone,
       hours: {
@@ -183,15 +303,14 @@ export default function SettingsForm({ initial }) {
       ...(linesToArray(services).length && {
         services: linesToArray(services),
       }),
-      ...(linesToArray(features).length && {
-        features: linesToArray(features),
-      }),
+      ...(cleanedFeatureGroups.length && { features: cleanedFeatureGroups }),
       ...(cleanedHoursNotes.length && { hours_notes: cleanedHoursNotes }),
       ...(substituteHolidayPolicy.trim() && {
         substitute_holiday_policy: substituteHolidayPolicy.trim(),
       }),
       ...(currentEvent.trim() && { current_event: currentEvent.trim() }),
       ...(eventImageUrl && { event_image_url: eventImageUrl }),
+      ...(cleanedNotices.length && { notices: cleanedNotices }),
       ...(disclaimer.trim() && { disclaimer: disclaimer.trim() }),
       ...(cleanedMenuItems.length > 0 && {
         chat_menu: {
@@ -211,6 +330,7 @@ export default function SettingsForm({ initial }) {
           name,
           phone,
           address,
+          logo_url: logoUrl || null,
           slogan,
           booking_url: bookingUrl,
           settings: newSettings,
@@ -301,6 +421,43 @@ export default function SettingsForm({ initial }) {
             onChange={setBookingUrl}
             placeholder="https://..."
           />
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-gray-500 font-medium">
+              병원 로고
+            </label>
+            <div className="text-xs text-gray-400">
+              jpg/png/webp, 2MB 이하. 홈페이지 헤더와 hero 영역에 노출됩니다.
+            </div>
+            {logoUrl ? (
+              <div className="relative inline-block self-start mt-1">
+                <img
+                  src={logoUrl}
+                  alt="병원 로고"
+                  className="max-h-32 rounded-xl border border-gray-200 bg-white p-2"
+                />
+                <button
+                  type="button"
+                  onClick={() => setLogoUrl("")}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs cursor-pointer hover:bg-red-600"
+                  title="로고 제거"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <label className="self-start cursor-pointer bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600 hover:border-[#C9A96E] transition-colors mt-1">
+                {uploadingLogo ? "업로드 중..." : "+ 로고 선택"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleLogoSelect}
+                  disabled={uploadingLogo}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
         </Section>
 
         <Section title="진료시간">
@@ -320,7 +477,7 @@ export default function SettingsForm({ initial }) {
             label="토요일"
             value={saturdayHours}
             onChange={setSaturdayHours}
-            placeholder="09:00-14:00"
+            placeholder="09:00-13:00 (점심시간 없음)"
           />
           <div className="flex flex-col gap-1.5">
             <label className="text-xs text-gray-500 font-medium">휴진</label>
@@ -414,7 +571,7 @@ export default function SettingsForm({ initial }) {
             label="의료진 요약"
             value={doctorsSummary}
             onChange={setDoctorsSummary}
-            placeholder="예: 두 분의 원장님이 직접 진료 (여성 전문의)"
+            placeholder="예: 15년 이상 경력의 산부인과 전문의(여의사) 진료"
           />
           <Field
             label="주차 안내"
@@ -440,7 +597,7 @@ export default function SettingsForm({ initial }) {
             onChange={setDepartments}
             multiline
             rows={3}
-            placeholder={"산부인과\n피부 관리 시술"}
+            placeholder={"산부인과"}
           />
         </Section>
 
@@ -454,22 +611,56 @@ export default function SettingsForm({ initial }) {
             onChange={setServices}
             multiline
             rows={6}
-            placeholder={"산부인과 일반진료\n여성성형\n갱년기 케어"}
+            placeholder={"부인과 진료(질염·성병, 비정상자궁출혈, 생리불순, 방광염, 갱년기)\n임신/피임 (산전검사, 임신관리, 피임, 임신중절수술)"}
           />
         </Section>
 
         <Section
-          title="병원 특징"
-          hint="한 줄에 하나씩 입력. 챗봇이 자랑할 포인트."
+          title="병원의 특별함"
+          hint="카테고리 그룹별로 묶어서 입력. 각 그룹 안 항목은 한 줄에 하나씩."
         >
-          <Field
-            label=""
-            value={features}
-            onChange={setFeatures}
-            multiline
-            rows={4}
-            placeholder={"프라이버시 철저 보호\n무료 발렛"}
-          />
+          {featureGroups.map((g, idx) => (
+            <div
+              key={idx}
+              className="bg-gray-50 rounded-xl p-3 flex flex-col gap-2"
+            >
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={g.title}
+                  onChange={(e) =>
+                    updateFeatureGroupTitle(idx, e.target.value)
+                  }
+                  placeholder="그룹 제목 (예: 전문성, 편안함, 신뢰)"
+                  className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[#C9A96E] bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeFeatureGroup(idx)}
+                  className="text-gray-300 hover:text-red-500 cursor-pointer px-1"
+                  title="그룹 삭제"
+                >
+                  ✕
+                </button>
+              </div>
+              <textarea
+                value={arrayToLines(g.items)}
+                onChange={(e) =>
+                  updateFeatureGroupItems(idx, e.target.value)
+                }
+                rows={4}
+                placeholder={"항목 한 줄에 하나"}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm leading-relaxed outline-none focus:border-[#C9A96E] resize-none bg-white"
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addFeatureGroup}
+            className="self-start text-xs text-[#C9A96E] hover:underline cursor-pointer mt-1"
+          >
+            + 그룹 추가
+          </button>
         </Section>
 
         <Section title="챗봇 설정">
@@ -503,26 +694,26 @@ export default function SettingsForm({ initial }) {
           </div>
 
           <Field
-            label="이번달 이벤트"
+            label="이번달 이벤트 (챗봇용 텍스트)"
             value={currentEvent}
             onChange={setCurrentEvent}
             multiline
             rows={2}
-            placeholder="비워두면 노출 안 함. 예: 11월 한 달간 골밀도 검사 20% 할인"
+            placeholder="비워두면 노출 안 함. 챗봇 인사에 함께 보이는 짧은 문구. 예: 11월 한 달간 골밀도 검사 20% 할인"
           />
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs text-gray-500 font-medium">
-              이벤트 이미지
+              챗봇 환영 이미지
             </label>
             <div className="text-xs text-gray-400">
-              jpg/png/webp, 2MB 이하. 챗봇 인사 직후 이벤트 안내에 함께 표시됩니다.
+              jpg/png/webp, 2MB 이하. 챗봇 첫 인사 직후 이벤트 안내에 1장 표시됩니다. (홈페이지 공지 이미지와는 별도)
             </div>
             {eventImageUrl ? (
               <div className="relative inline-block self-start mt-1">
                 <img
                   src={eventImageUrl}
-                  alt="이벤트 이미지"
+                  alt="챗봇 환영 이미지"
                   className="max-w-full max-h-48 rounded-xl border border-gray-200"
                 />
                 <button
@@ -536,12 +727,12 @@ export default function SettingsForm({ initial }) {
               </div>
             ) : (
               <label className="self-start cursor-pointer bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600 hover:border-[#C9A96E] transition-colors mt-1">
-                {uploadingImage ? "업로드 중..." : "+ 이미지 선택"}
+                {uploadingEvent ? "업로드 중..." : "+ 이미지 선택"}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  onChange={handleImageSelect}
-                  disabled={uploadingImage}
+                  onChange={handleEventImageSelect}
+                  disabled={uploadingEvent}
                   className="hidden"
                 />
               </label>
@@ -556,6 +747,72 @@ export default function SettingsForm({ initial }) {
             rows={2}
             placeholder="예: 본 채널은 일반 안내용이며 진료를 대신할 수 없습니다."
           />
+        </Section>
+
+        <Section
+          title="공지 이미지 (홈페이지)"
+          hint="이달의 이벤트, 진료 일정/임시변경사항 등을 이미지로 안내. 여러 장 등록하면 홈페이지 NOTICE 섹션에 같이 노출됩니다."
+        >
+          <div className="text-xs text-gray-400">
+            jpg/png/webp, 각 2MB 이하. 한 번에 여러 장 선택 가능.
+          </div>
+          {notices.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {notices.map((n, idx) => (
+                <div
+                  key={`${n.image_url}-${idx}`}
+                  className="relative bg-white border border-gray-200 rounded-xl p-2 flex flex-col gap-2"
+                >
+                  <img
+                    src={n.image_url}
+                    alt={`공지 ${idx + 1}`}
+                    className="w-full h-32 object-cover rounded-lg"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => moveNotice(idx, -1)}
+                        disabled={idx === 0}
+                        className="px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:border-[#C9A96E] hover:text-[#C9A96E] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                        title="앞으로"
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveNotice(idx, 1)}
+                        disabled={idx === notices.length - 1}
+                        className="px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:border-[#C9A96E] hover:text-[#C9A96E] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                        title="뒤로"
+                      >
+                        →
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeNotice(idx)}
+                      className="text-red-400 hover:text-red-600 cursor-pointer"
+                      title="삭제"
+                    >
+                      ✕ 제거
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <label className="self-start cursor-pointer bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600 hover:border-[#C9A96E] transition-colors mt-1">
+            {uploadingNotice ? "업로드 중..." : "+ 이미지 추가"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={handleNoticeSelect}
+              disabled={uploadingNotice}
+              className="hidden"
+            />
+          </label>
         </Section>
 
         <Section

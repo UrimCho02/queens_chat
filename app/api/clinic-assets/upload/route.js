@@ -1,5 +1,5 @@
-// 병원 에셋(이벤트 이미지 등) 업로드. service_role 로 Storage 에 저장하고 public URL 반환.
-// 폴더 구조 {clinic_id}/event/{uuid}.{ext} — 멀티테넌트 격리.
+// 병원 에셋(로고/공지/이벤트 이미지 등) 업로드. service_role 로 Storage 에 저장하고 public URL 반환.
+// 폴더 구조 {clinic_id}/{kind}/{uuid}.{ext} — 멀티테넌트 격리.
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { getCurrentClinic } from "@/lib/auth/getCurrentClinic";
@@ -11,6 +11,7 @@ const ALLOWED = {
   "image/png": "png",
   "image/webp": "webp",
 };
+const ALLOWED_KINDS = new Set(["logo", "notice", "event"]);
 
 export async function POST(request) {
   try {
@@ -28,6 +29,11 @@ export async function POST(request) {
       return Response.json({ error: "파일이 없습니다." }, { status: 400 });
     }
 
+    const kindRaw = formData.get("kind");
+    const kind = typeof kindRaw === "string" && ALLOWED_KINDS.has(kindRaw)
+      ? kindRaw
+      : "event"; // 기존 호출자 호환
+
     const ext = ALLOWED[file.type];
     if (!ext) {
       return Response.json(
@@ -42,7 +48,7 @@ export async function POST(request) {
       );
     }
 
-    const path = `${clinic.id}/event/${crypto.randomUUID()}.${ext}`;
+    const path = `${clinic.id}/${kind}/${crypto.randomUUID()}.${ext}`;
 
     const service = createServiceClient();
     const { error: uploadErr } = await service.storage

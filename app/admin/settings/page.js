@@ -31,6 +31,7 @@ export default async function SettingsPage() {
         name: clinic.name || "",
         phone: clinic.phone || "",
         address: clinic.address || "",
+        logo_url: clinic.logo_url || "",
         slogan: settings?.slogan || "",
         booking_url: settings?.booking_url || "",
         settings: settings?.settings || {},

@@ -17,6 +17,28 @@ const DAY_LABELS = {
   holiday: "공휴일",
 };
 
+// features 구조 정규화 — 신구 호환.
+// 신: [{title, items[]}]
+// 구: string[] → 단일 그룹으로 wrap (title 없음)
+function normalizeFeatureGroups(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  if (typeof raw[0] === "string") {
+    return [{ title: "", items: raw.filter(Boolean) }];
+  }
+  return raw
+    .map((g) => ({
+      title: g?.title || "",
+      items: Array.isArray(g?.items) ? g.items.filter(Boolean) : [],
+    }))
+    .filter((g) => g.items.length > 0);
+}
+
+// 홈페이지 공지 이미지. event_image_url은 챗봇 환영 이미지 전용이라 fallback 안 함.
+function normalizeNotices(s) {
+  if (!Array.isArray(s.notices)) return [];
+  return s.notices.filter((n) => n && n.image_url);
+}
+
 export async function generateMetadata({ params }) {
   const { slug } = await params;
   const supabase = createServiceClient();
@@ -39,7 +61,7 @@ export default async function ClinicHomepage({ params }) {
 
   const { data: clinic } = await supabase
     .from("clinics")
-    .select("id, name, phone, address")
+    .select("id, name, phone, address, logo_url")
     .eq("slug", slug)
     .eq("is_active", true)
     .maybeSingle();
@@ -60,20 +82,29 @@ export default async function ClinicHomepage({ params }) {
   const hoursNotes = (s.hours_notes || []).filter((n) => n?.enabled && n?.text);
   const departments = s.departments || [];
   const services = s.services || [];
-  const features = s.features || [];
-  const currentEvent = s.current_event || "";
-  const eventImageUrl = s.event_image_url || "";
+  const featureGroups = normalizeFeatureGroups(s.features);
+  const notices = normalizeNotices(s);
 
   return (
     <div className="min-h-screen bg-white text-gray-800">
       {/* Header */}
       <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">👑</span>
-            <div className="font-semibold text-gray-900">{clinic.name}</div>
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {clinic.logo_url ? (
+              <img
+                src={clinic.logo_url}
+                alt={`${clinic.name} 로고`}
+                className="h-9 sm:h-10 w-auto flex-shrink-0"
+              />
+            ) : (
+              <span className="text-lg">👑</span>
+            )}
+            <div className="font-semibold text-gray-900 text-base sm:text-lg truncate">
+              {clinic.name}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {clinic.phone && (
               <a
                 href={`tel:${clinic.phone.replace(/[^0-9+]/g, "")}`}
@@ -89,7 +120,7 @@ export default async function ClinicHomepage({ params }) {
                 rel="noreferrer"
                 className="text-xs px-3 py-1.5 rounded-full bg-[#C9A96E] text-white hover:bg-[#b8965d] transition-colors"
               >
-                예약하기
+                진료 예약
               </a>
             )}
           </div>
@@ -99,10 +130,21 @@ export default async function ClinicHomepage({ params }) {
       {/* Hero */}
       <section className="bg-gradient-to-b from-[#FBF6EE] to-white">
         <div className="max-w-5xl mx-auto px-4 py-16 sm:py-24 text-center">
-          <div className="text-xs font-medium text-[#C9A96E] tracking-widest uppercase mb-3">
+          {clinic.logo_url ? (
+            <img
+              src={clinic.logo_url}
+              alt={`${clinic.name} 로고`}
+              className="mx-auto mb-6 h-24 sm:h-32 w-auto"
+            />
+          ) : (
+            <div className="text-xs font-medium text-[#C9A96E] tracking-widest uppercase mb-3">
+              {clinic.name}
+            </div>
+          )}
+          <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
             {clinic.name}
           </div>
-          <h1 className="text-3xl sm:text-5xl font-bold text-gray-900 leading-tight">
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 leading-tight">
             {slogan || "환자 한 분 한 분, 진심으로 진료합니다"}
           </h1>
           {s.doctors_summary && (
@@ -125,37 +167,41 @@ export default async function ClinicHomepage({ params }) {
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-6 py-3 rounded-full text-sm font-medium hover:border-[#C9A96E] hover:text-[#C9A96E] transition-colors"
               >
-                예약 페이지로
+                진료 예약
               </a>
             )}
           </div>
         </div>
       </section>
 
-      {/* Event */}
-      {(currentEvent || eventImageUrl) && (
+      {/* Notice */}
+      {notices.length > 0 && (
         <section className="max-w-5xl mx-auto px-4 py-12">
-          <SectionHeader badge="EVENT" title="이번달 이벤트" />
-          <div className="mt-6 bg-[#FBF6EE] border border-[#E8D9BC] rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row gap-6 items-center">
-            {eventImageUrl && (
+          <SectionHeader badge="NOTICE" title="공지사항" />
+          <div
+            className={`mt-6 grid gap-4 ${
+              notices.length === 1
+                ? "grid-cols-1 max-w-xl mx-auto"
+                : notices.length === 2
+                ? "grid-cols-1 sm:grid-cols-2"
+                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+            }`}
+          >
+            {notices.map((n, i) => (
               <a
-                href={eventImageUrl}
+                key={i}
+                href={n.image_url}
                 target="_blank"
                 rel="noreferrer"
-                className="block flex-shrink-0"
+                className="block bg-[#FBF6EE] border border-[#E8D9BC] rounded-2xl p-3 hover:shadow-md transition-shadow"
               >
                 <img
-                  src={eventImageUrl}
-                  alt="이벤트"
-                  className="max-w-full sm:max-w-xs rounded-2xl border border-[#E8D9BC] hover:opacity-90 transition-opacity"
+                  src={n.image_url}
+                  alt={`공지 ${i + 1}`}
+                  className="w-full rounded-xl"
                 />
               </a>
-            )}
-            {currentEvent && (
-              <p className="text-base text-gray-700 leading-relaxed whitespace-pre-line">
-                {currentEvent}
-              </p>
-            )}
+            ))}
           </div>
         </section>
       )}
@@ -237,18 +283,30 @@ export default async function ClinicHomepage({ params }) {
         </section>
       )}
 
-      {/* Features */}
-      {features.length > 0 && (
+      {/* Features (병원의 특별함) */}
+      {featureGroups.length > 0 && (
         <section className="max-w-5xl mx-auto px-4 py-12">
-          <SectionHeader badge="WHY US" title="병원 특징" />
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {features.map((f, i) => (
-              <div
-                key={i}
-                className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex items-start gap-3"
-              >
-                <span className="text-[#C9A96E] text-xl">★</span>
-                <span className="text-gray-700">{f}</span>
+          <SectionHeader badge="WHY US" title={`${clinic.name}의 특별함`} />
+          <div className="mt-8 flex flex-col gap-8">
+            {featureGroups.map((g, gi) => (
+              <div key={gi}>
+                {g.title && (
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="text-[#C9A96E]">✦</span>
+                    {g.title}
+                  </h3>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {g.items.map((item, i) => (
+                    <div
+                      key={i}
+                      className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex items-start gap-3"
+                    >
+                      <span className="text-[#C9A96E] text-xl">★</span>
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

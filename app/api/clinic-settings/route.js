@@ -1,5 +1,5 @@
 // /admin/settings 페이지에서 호출하는 저장 API.
-// clinics(name/phone/address) + clinic_settings(slogan/booking_url/settings) 업데이트하고
+// clinics(name/phone/address/logo_url) + clinic_settings(slogan/booking_url/settings) 업데이트하고
 // 변경된 테이블별로 clinic_change_logs INSERT.
 
 import { createServiceClient } from "@/lib/supabase/service";
@@ -16,6 +16,12 @@ function extractAssetPath(url) {
   return url.slice(idx + marker.length);
 }
 
+function noticeUrls(settings) {
+  const arr = settings?.notices;
+  if (!Array.isArray(arr)) return [];
+  return arr.map((n) => n?.image_url).filter(Boolean);
+}
+
 export async function POST(request) {
   try {
     const { user, clinic } = await getCurrentClinic();
@@ -27,14 +33,14 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { name, phone, address, slogan, booking_url, settings } = body;
+    const { name, phone, address, logo_url, slogan, booking_url, settings } = body;
 
     const service = createServiceClient();
 
     // before snapshot
     const { data: clinicBefore } = await service
       .from("clinics")
-      .select("name, phone, address")
+      .select("name, phone, address, logo_url")
       .eq("id", clinic.id)
       .single();
 
@@ -47,7 +53,7 @@ export async function POST(request) {
     // update clinics
     const { error: clinicUpdateErr } = await service
       .from("clinics")
-      .update({ name, phone, address })
+      .update({ name, phone, address, logo_url })
       .eq("id", clinic.id);
 
     if (clinicUpdateErr) throw clinicUpdateErr;
@@ -64,22 +70,39 @@ export async function POST(request) {
 
     if (settingsUpsertErr) throw settingsUpsertErr;
 
-    // 옛 이벤트 이미지 cleanup — URL 이 바뀌거나 비워졌으면 Storage 파일 삭제.
-    // 본인 clinic 폴더(`{clinic.id}/`) 내부 경로만 지움 (격리 방어).
-    const oldImageUrl = settingsBefore?.settings?.event_image_url || "";
-    const newImageUrl = settings?.event_image_url || "";
-    if (oldImageUrl && oldImageUrl !== newImageUrl) {
-      const path = extractAssetPath(oldImageUrl);
-      if (path && path.startsWith(`${clinic.id}/`)) {
-        const { error: removeErr } = await service.storage
-          .from(ASSET_BUCKET)
-          .remove([path]);
-        if (removeErr) console.error("asset cleanup error:", removeErr);
-      }
+    // Storage cleanup — 제거된 이미지들의 파일 삭제. 본인 clinic 폴더만 (격리 방어).
+    const toRemove = [];
+
+    // 로고
+    const oldLogo = clinicBefore?.logo_url || "";
+    const newLogo = logo_url || "";
+    if (oldLogo && oldLogo !== newLogo) toRemove.push(oldLogo);
+
+    // 이벤트(legacy single)
+    const oldEvent = settingsBefore?.settings?.event_image_url || "";
+    const newEvent = settings?.event_image_url || "";
+    if (oldEvent && oldEvent !== newEvent) toRemove.push(oldEvent);
+
+    // 공지(notices 배열) — diff
+    const oldNotices = noticeUrls(settingsBefore?.settings);
+    const newNoticeSet = new Set(noticeUrls(settings));
+    for (const url of oldNotices) {
+      if (!newNoticeSet.has(url)) toRemove.push(url);
+    }
+
+    const removePaths = toRemove
+      .map(extractAssetPath)
+      .filter((p) => p && p.startsWith(`${clinic.id}/`));
+
+    if (removePaths.length > 0) {
+      const { error: removeErr } = await service.storage
+        .from(ASSET_BUCKET)
+        .remove(removePaths);
+      if (removeErr) console.error("asset cleanup error:", removeErr);
     }
 
     // change log
-    const clinicAfter = { name, phone, address };
+    const clinicAfter = { name, phone, address, logo_url };
     const settingsAfter = { slogan, booking_url, settings };
 
     const logs = [];
