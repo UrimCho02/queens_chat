@@ -31,13 +31,13 @@
 
 ## 2026-05-20
 
-### 홈페이지 템플릿 3종 + 데모 가상 병원 2곳
+### 홈페이지 템플릿 3종 + 데모 가상 병원 3곳
 
 **목적**: 영업 시 가입 병원에 홈페이지 스타일 선택지 제시. 더퀸즈(실제 병원) 데이터 노출 없이 데모할 수 있도록 가상 병원 마련.
 
 **한 것**
 - DB: `20260520000200_add_template_to_clinics.sql` — `clinics.template` 컬럼(classic|modern|soft, 기본 classic). **Studio 적용 필요 — 미적용 시 홈페이지 전체 깨짐(코드가 이 컬럼 SELECT)**.
-- DB: `20260520000300_seed_demo_clinics.sql` — 가상 병원 2곳 시드. OO여성의원(`demo-obgyn`/classic), OO내과의원(`demo-internal`/modern). 가공 데이터. slug 중복 시 건너뜀(재실행 안전).
+- DB: `20260520000300_seed_demo_clinics.sql` — 가상 병원 3곳 시드(템플릿 3종과 1:1). OO여성의원(`demo-obgyn`/classic), OO내과의원(`demo-internal`/modern), OO소아청소년과의원(`demo-pediatric`/soft). 가공 데이터. slug 중복 시 건너뜀(재실행 안전).
 - `app/[slug]/page.js` — 로더로 단순화. 데이터 조회 → `clinic.template`로 템플릿 분기 → 렌더. `?template=<key>` 쿼리로 미리보기 override(영업용).
 - `app/[slug]/templates/shared.js` — `buildHomeData()` 공통 데이터 가공 + 정규화 함수. 3개 템플릿 공유.
 - `app/[slug]/templates/{Classic,Modern,Soft}Template.js` — 템플릿 3종. 섹션 구성·데이터는 동일, 레이아웃·색만 다름.
@@ -48,7 +48,9 @@
 
 **배포 순서 주의**: `20260520000200`(template 컬럼)을 Studio에 **먼저** 적용 → 그 다음 배포. 순서 바뀌면 production 홈페이지가 "컬럼 없음"으로 깨짐. `20260520000300`(데모 병원)은 나중에 적용해도 무방(미적용 시 /demo-* 가 404).
 
-**참고**: 데모 병원은 공지·의료진 이미지 없음(Storage 파일 필요) — 해당 섹션은 자동 숨김. 세 번째 템플릿(soft)은 `/demo-obgyn?template=soft`로 미리보기.
+**참고**: 데모 병원은 공지·의료진 이미지 없음(Storage 파일 필요) — 해당 섹션은 자동 숨김. 데모 3곳이 템플릿 3종을 1:1로 보여줌(`/demo-obgyn`=classic, `/demo-internal`=modern, `/demo-pediatric`=soft). `?template=`로 교차 미리보기도 가능.
+
+**설계 의도**: Classic 템플릿 = 더퀸즈 홈페이지 디자인. 영업 시 더퀸즈 실데이터 대신 OO여성의원(de-identified)으로 Classic을 보여줌 → 더퀸즈 정체성 비노출. 템플릿은 레이아웃일 뿐, 병원 정체성은 데이터(이름·로고·내용)에서 나옴.
 
 ### 챗봇 slug 라우팅 — CLINIC_SLUG 하드코딩 제거
 

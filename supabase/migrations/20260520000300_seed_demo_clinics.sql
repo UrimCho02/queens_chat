@@ -1,11 +1,11 @@
--- 데모용 가상 병원 2곳 시드. 영업 시 템플릿을 보여주기 위한 샘플.
+-- 데모용 가상 병원 3곳 시드. 영업 시 템플릿 3종을 1:1로 보여주기 위한 샘플.
 --   - 실제 병원(더퀸즈) 데이터 노출 방지용. 모든 내용은 가공의 데이터.
 --   - 어드민 페이지 없이 SQL 로만 관리 (clinic_users 매핑 없음).
 --   - slug 중복 시 건너뜀 — 재실행 안전.
 --
--- demo-obgyn   : OO여성의원  (template: classic)
--- demo-internal: OO내과의원  (template: modern)
--- 세 번째 템플릿(soft)은 /demo-obgyn?template=soft 처럼 미리보기 쿼리로 확인.
+-- demo-obgyn     : OO여성의원         (template: classic)
+-- demo-internal  : OO내과의원         (template: modern)
+-- demo-pediatric : OO소아청소년과의원 (template: soft)
 
 begin;
 
@@ -109,6 +109,58 @@ select c.id,
        }'::jsonb
 from public.clinics c
 where c.slug = 'demo-internal'
+  and not exists (
+    select 1 from public.clinic_settings cs where cs.clinic_id = c.id
+  );
+
+-- ============================================================================
+-- 3. OO소아청소년과의원 (demo-pediatric) — 가상 소아청소년과
+-- ============================================================================
+insert into public.clinics (name, slug, phone, address, is_active, template)
+select 'OO소아청소년과의원', 'demo-pediatric', '02-2345-6789',
+       '서울특별시 OO구 OO로 78, 3층', true, 'soft'
+where not exists (select 1 from public.clinics where slug = 'demo-pediatric');
+
+insert into public.clinic_settings (clinic_id, slogan, booking_url, settings)
+select c.id,
+       '우리 아이 건강, 한 걸음 가까이에서',
+       null,
+       '{
+         "tone": "warm",
+         "hours": {
+           "weekday": "09:00 - 18:00",
+           "saturday": "09:00 - 13:00",
+           "lunch": "13:00 - 14:00",
+           "closed": ["sun", "holiday"]
+         },
+         "doctors_summary": "소아청소년과 전문의가 신생아부터 청소년까지 따뜻하게 진료합니다.",
+         "departments": ["소아청소년과", "예방접종 클리닉"],
+         "services": [
+           "영유아 건강검진",
+           "예방접종",
+           "감기·장염 등 일반 진료",
+           "알레르기·아토피 상담",
+           "성장·발달 상담"
+         ],
+         "features": [
+           {
+             "title": "OO소아청소년과의원이 좋은 이유",
+             "items": [
+               "아이가 무서워하지 않는 편안한 진료",
+               "대기 공간에 아이 놀이 공간 마련",
+               "예방접종 일정 알림 서비스"
+             ]
+           }
+         ],
+         "hours_notes": [
+           { "text": "평일은 진료 마감 30분 전까지 접수해 주세요.", "enabled": true }
+         ],
+         "substitute_holiday_policy": "대체공휴일은 휴진입니다.",
+         "parking": "건물 주차장 1시간 무료",
+         "reservation_note": "영유아 검진은 예약 후 방문을 권장합니다."
+       }'::jsonb
+from public.clinics c
+where c.slug = 'demo-pediatric'
   and not exists (
     select 1 from public.clinic_settings cs where cs.clinic_id = c.id
   );
