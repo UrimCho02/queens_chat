@@ -113,6 +113,7 @@ npm run lint    # ESLint
 ## 주요 결정 사항
 
 - **멀티테넌트 URL 식별**: slug 기반. 홈페이지는 `/[slug]/`, 챗봇은 `/?clinic=<slug>` 쿼리 파라미터(홈페이지 임베드 위젯이 전달, 없으면 더퀸즈 fallback). 서브도메인은 추후.
+- **홈페이지 템플릿**: `clinics.template` (classic|modern|soft). `app/[slug]/page.js`가 분기, `?template=<key>`로 미리보기 override. 템플릿은 `app/[slug]/templates/`에, 공통 데이터 가공은 `shared.js`. 데이터·어드민은 템플릿과 무관하게 공유 — 보이는 레이아웃만 다름. 영업 데모용 가상 병원 `demo-obgyn`/`demo-internal` (SQL 시드만, 어드민 없음).
 - **`clinic_settings` 구조**: 정규화 컬럼 (`booking_url`, `slogan`) + JSONB `settings` (hours, doctors_summary, services, features, departments, parking, reservation_note, current_event, disclaimer, tone 등 가변).
 - **인증 방식**: 이메일+비밀번호 Supabase Auth. 매직링크/OAuth는 추후.
 - **역할 모델**: `admin` (`clinic_users` 매핑) + `superadmin` (별도 `superadmins` 테이블). superadmin = SaaS 운영자 (우림님 본인).
