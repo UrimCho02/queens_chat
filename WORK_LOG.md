@@ -7,11 +7,9 @@
 
 ## 다음에 해야 할 일
 
-홈페이지 템플릿 v2 (사용자 피드백 2026-05-18 반영):
-- **의료진 소개 섹션**: 현재 `doctors_summary` 한 줄만 있음 → 의료진별 이름/직책/이력/사진 데이터 모델 필요. 새 테이블 `clinic_doctors` (id/clinic_id/name/title/bio/photo_url/sort_order/is_active) + 어드민 페이지 + 홈페이지 카드 섹션.
-- **기본 메뉴 (헤더 nav)**: 현재 헤더에 병원명 + 전화 + 예약만 있음 → 섹션 anchor link (소개 / 진료시간 / 진료과목 / 의료진 / 위치). 1페이지 내 스크롤. 작은 작업.
-
 홈페이지 v2 작업 후속 (어드민에서 직접 입력 필요):
+- `supabase/migrations/20260520000100_drop_clinic_doctors.sql` 을 Supabase Studio SQL Editor에 적용 (의료진 테이블 제거 — 단일 이미지 방식으로 전환했으므로 안 쓰는 테이블 정리).
+- /admin/doctors 에서 의료진 소개 이미지 업로드 (의사 1명당 1장, 여러 장 가능). 등록해야 홈페이지에 의료진 섹션 노출.
 - /admin/settings 에서 다음 값들 새로 입력/저장:
   - 의료진 요약 → "15년 이상 경력의 산부인과 전문의(여의사) 진료"
   - 진료과목 → "산부인과" (피부관리시술 제거)
@@ -29,6 +27,34 @@
 ## 검토 대기 (의사결정 필요)
 
 - **챗봇 메뉴 다단계화 (서브메뉴)** — 닥터챗봇 참고. 현재 `chat_menu.items`는 단층(클릭 → 자동 입력). 닥터챗봇은 클릭 → 서브 카테고리 펼침. 결정 사항: (1) 환자 UX 가치가 충분한지 (현재 단층이 단순/명료) (2) 데이터 모델 — items에 `children` 배열 / 별도 메뉴 트리 테이블. 원장님 논의 후 결정.
+
+---
+
+## 2026-05-20
+
+### 홈페이지 v2 — 의료진 소개 섹션 + 헤더 anchor nav
+
+**목적**: 홈페이지 템플릿 v2 todo 2건 완료. 의료진 소개 섹션 + 헤더 섹션 이동 nav.
+
+**1차 설계 → 폐기**: 처음엔 의료진별 이름/직책/이력/사진을 구조화한 `clinic_doctors` 테이블 + 카드 CRUD 어드민으로 만듦 (마이그레이션 `20260520000000`, 사용자 적용까지 완료). 그러나 사용자가 올리려는 실제 자산(네이버 플레이스용 더퀸즈 의료진 소개)은 **제목 배너 + 일러스트 + 이름 + 이력이 전부 박힌 PNG 한 장**이라 구조화 모델이 맞지 않음. → **이미지 방식으로 전환**. 의료진 다인 병원 대응을 위해 단일 → **다중 이미지(의사 1명당 1장)**로 확정.
+
+**최종 — 다중 이미지 방식**
+- DB: 의료진 소개 이미지는 `clinic_settings.settings.doctor_images` (URL 문자열 배열, JSONB 키, 마이그레이션 불필요).
+  - `20260520000100_drop_clinic_doctors.sql` — 1차에 만든 `clinic_doctors` 테이블 DROP (되돌림). **사용자가 Studio에 적용해야 함**.
+- API: `/api/clinic-doctors` — `PUT` 하나. clinic_settings 읽어 `doctor_images` 배열 머지 후 upsert + `clinic_change_logs`(table_name=clinic_settings) + 사라진 이미지 Storage 정리. (1차의 `[id]` 라우트 / POST·DELETE 폐기)
+- `app/api/clinic-assets/upload/route.js` — `ALLOWED_KINDS`에 `doctor` 추가. 폴더 `{clinic_id}/doctor/`.
+- 어드민 `/admin/doctors` (page + `DoctorsManager.js`) — 의료진 이미지 다중 업로드. 어제 만든 "공지 이미지" UX 재활용 (여러 장 선택 / ←→ 순서 변경 / 개별 제거 / 저장).
+- 홈페이지 `app/[slug]/page.js`:
+  - **DOCTORS 섹션** — 진료안내(CARE)와 특별함(WHY US) 사이. `doctor_images` 를 1장이면 중앙, 2장+면 2열 그리드로 노출 (클릭 시 원본 새 탭).
+  - **헤더 anchor nav** — 헤더 하단에 섹션 이동 nav 행 (소개/진료시간/진료안내/의료진/위치). 존재하는 섹션만 노출. 각 섹션에 `id` + `scroll-mt-32`.
+  - 섹션 노출 조건을 `showHours`/`showCare`/`showVisit`/`doctorsImageUrl` 변수로 추출 (nav와 섹션 렌더가 공유).
+- 어드민 헤더 5곳(admin/faqs/settings/recovery-guides/logs)에 [의료진] 메뉴 추가.
+- `npm run build` 통과.
+
+**주의**
+- `20260520000100_drop_clinic_doctors.sql` 미적용이어도 앱은 정상 (테이블을 더 이상 안 씀). 깔끔하게 DB 정리 차원에서 적용 권장.
+- 의료진 이미지는 시드 없이 어드민에서 직접 업로드. Hero의 기존 `doctors_summary` 한 줄은 그대로 유지 (의료진 섹션과 별개).
+- 향후 다른 병원이 구조화된 의료진 카드(개별 사진/이력)를 원하면 `clinic_doctors` 모델 재도입 가능 — 1차 마이그레이션이 히스토리에 남아 있음.
 
 ---
 

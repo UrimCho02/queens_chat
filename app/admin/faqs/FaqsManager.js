@@ -102,6 +102,12 @@ export default function FaqsManager({ initialFaqs, clinicName }) {
             ⚙ 설정
           </button>
           <button
+            onClick={() => router.push("/admin/doctors")}
+            className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
+          >
+            의료진
+          </button>
+          <button
             onClick={() => router.push("/admin/recovery-guides")}
             className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
           >

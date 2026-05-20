@@ -11,7 +11,7 @@ const ALLOWED = {
   "image/png": "png",
   "image/webp": "webp",
 };
-const ALLOWED_KINDS = new Set(["logo", "notice", "event"]);
+const ALLOWED_KINDS = new Set(["logo", "notice", "event", "doctor"]);
 
 export async function POST(request) {
   try {

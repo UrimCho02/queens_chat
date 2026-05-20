@@ -100,6 +100,12 @@ export default function GuidesManager({ initialGuides, clinicName }) {
             FAQ
           </button>
           <button
+            onClick={() => router.push("/admin/doctors")}
+            className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
+          >
+            의료진
+          </button>
+          <button
             onClick={() => router.push("/admin/logs")}
             className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
           >

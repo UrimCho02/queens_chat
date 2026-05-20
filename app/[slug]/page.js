@@ -84,6 +84,29 @@ export default async function ClinicHomepage({ params }) {
   const services = s.services || [];
   const featureGroups = normalizeFeatureGroups(s.features);
   const notices = normalizeNotices(s);
+  const doctorImages = Array.isArray(s.doctor_images)
+    ? s.doctor_images.filter((u) => typeof u === "string" && u)
+    : [];
+
+  // 섹션 노출 여부 — 헤더 anchor nav 와 섹션 렌더 양쪽에서 사용.
+  const showHours = !!(
+    hours.weekday ||
+    hours.saturday ||
+    hours.lunch ||
+    closedLabels.length > 0 ||
+    hoursNotes.length > 0 ||
+    s.substitute_holiday_policy
+  );
+  const showCare = departments.length > 0 || services.length > 0;
+  const showVisit = !!(clinic.address || s.parking || s.reservation_note);
+
+  const navItems = [
+    { id: "intro", label: "소개" },
+    showHours && { id: "hours", label: "진료시간" },
+    showCare && { id: "care", label: "진료안내" },
+    doctorImages.length > 0 && { id: "doctors", label: "의료진" },
+    showVisit && { id: "visit", label: "위치" },
+  ].filter(Boolean);
 
   return (
     <div className="min-h-screen bg-white text-gray-800">
@@ -125,10 +148,30 @@ export default async function ClinicHomepage({ params }) {
             )}
           </div>
         </div>
+
+        {/* 섹션 anchor nav — 1페이지 내 스크롤 이동 */}
+        {navItems.length > 1 && (
+          <nav className="border-t border-gray-100">
+            <div className="max-w-5xl mx-auto px-2 flex gap-0.5 overflow-x-auto">
+              {navItems.map((n) => (
+                <a
+                  key={n.id}
+                  href={`#${n.id}`}
+                  className="whitespace-nowrap px-3 py-2.5 text-xs sm:text-sm text-gray-600 hover:text-[#C9A96E] transition-colors"
+                >
+                  {n.label}
+                </a>
+              ))}
+            </div>
+          </nav>
+        )}
       </header>
 
       {/* Hero */}
-      <section className="bg-gradient-to-b from-[#FBF6EE] to-white">
+      <section
+        id="intro"
+        className="bg-gradient-to-b from-[#FBF6EE] to-white scroll-mt-32"
+      >
         <div className="max-w-5xl mx-auto px-4 py-16 sm:py-24 text-center">
           {clinic.logo_url ? (
             <img
@@ -207,13 +250,11 @@ export default async function ClinicHomepage({ params }) {
       )}
 
       {/* Hours */}
-      {(hours.weekday ||
-        hours.saturday ||
-        hours.lunch ||
-        closedLabels.length > 0 ||
-        hoursNotes.length > 0 ||
-        s.substitute_holiday_policy) && (
-        <section className="max-w-5xl mx-auto px-4 py-12">
+      {showHours && (
+        <section
+          id="hours"
+          className="max-w-5xl mx-auto px-4 py-12 scroll-mt-32"
+        >
           <SectionHeader badge="HOURS" title="진료시간" />
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {hours.weekday && (
@@ -249,8 +290,8 @@ export default async function ClinicHomepage({ params }) {
       )}
 
       {/* Departments / Services */}
-      {(departments.length > 0 || services.length > 0) && (
-        <section className="bg-gray-50">
+      {showCare && (
+        <section id="care" className="bg-gray-50 scroll-mt-32">
           <div className="max-w-5xl mx-auto px-4 py-12">
             <SectionHeader badge="CARE" title="진료 안내" />
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -279,6 +320,39 @@ export default async function ClinicHomepage({ params }) {
                 </Card>
               )}
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Doctors (의료진 소개) — 어드민에서 등록한 의료진 이미지들 */}
+      {doctorImages.length > 0 && (
+        <section
+          id="doctors"
+          className="max-w-5xl mx-auto px-4 py-12 scroll-mt-32"
+        >
+          <SectionHeader badge="DOCTORS" title="의료진 소개" />
+          <div
+            className={`mt-8 grid gap-5 ${
+              doctorImages.length === 1
+                ? "grid-cols-1 max-w-xl mx-auto"
+                : "grid-cols-1 sm:grid-cols-2"
+            }`}
+          >
+            {doctorImages.map((url, i) => (
+              <a
+                key={i}
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="block hover:opacity-90 transition-opacity"
+              >
+                <img
+                  src={url}
+                  alt={`${clinic.name} 의료진 ${i + 1}`}
+                  className="w-full rounded-2xl border border-gray-100 shadow-sm"
+                />
+              </a>
+            ))}
           </div>
         </section>
       )}
@@ -314,8 +388,8 @@ export default async function ClinicHomepage({ params }) {
       )}
 
       {/* Location */}
-      {(clinic.address || s.parking || s.reservation_note) && (
-        <section className="bg-gray-50">
+      {showVisit && (
+        <section id="visit" className="bg-gray-50 scroll-mt-32">
           <div className="max-w-5xl mx-auto px-4 py-12">
             <SectionHeader badge="VISIT" title="찾아오시는 길" />
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
