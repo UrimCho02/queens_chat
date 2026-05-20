@@ -112,7 +112,7 @@ npm run lint    # ESLint
 
 ## 주요 결정 사항
 
-- **멀티테넌트 URL 식별**: slug 기반 path 계획 (`/[clinic]/...`). 현재는 `chat/route.js`의 `CLINIC_SLUG = "thequeens"` 하드코딩 (단계 7~9에서 동적 전환 예정).
+- **멀티테넌트 URL 식별**: slug 기반. 홈페이지는 `/[slug]/`, 챗봇은 `/?clinic=<slug>` 쿼리 파라미터(홈페이지 임베드 위젯이 전달, 없으면 더퀸즈 fallback). 서브도메인은 추후.
 - **`clinic_settings` 구조**: 정규화 컬럼 (`booking_url`, `slogan`) + JSONB `settings` (hours, doctors_summary, services, features, departments, parking, reservation_note, current_event, disclaimer, tone 등 가변).
 - **인증 방식**: 이메일+비밀번호 Supabase Auth. 매직링크/OAuth는 추후.
 - **역할 모델**: `admin` (`clinic_users` 매핑) + `superadmin` (별도 `superadmins` 테이블). superadmin = SaaS 운영자 (우림님 본인).

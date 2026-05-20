@@ -21,7 +21,6 @@
   - 공지 이미지 (이달의 이벤트, 진료 일정/임시변경사항) 등록
 
 그 외 우선순위:
-- 챗봇(`/`) 도 slug 기반 라우팅(`/[slug]/chat` 또는 query param)으로 동적 전환 — 현재 `chat/route.js`의 `CLINIC_SLUG = "thequeens"` 하드코딩. 신규 병원 들어오면 같이 분기 필요.
 - 신규 병원 온보딩 흐름 (clinics INSERT + 직원 계정 생성 + 기본 settings seed) — superadmin 페이지 또는 SQL 가이드.
 
 ## 검토 대기 (의사결정 필요)
@@ -31,6 +30,20 @@
 ---
 
 ## 2026-05-20
+
+### 챗봇 slug 라우팅 — CLINIC_SLUG 하드코딩 제거
+
+**목적**: `chat/route.js`의 `CLINIC_SLUG = "thequeens"` 하드코딩 제거 → 챗봇이 어느 병원인지 동적 인식. 멀티테넌트 기반.
+
+**방식**: query param `?clinic=<slug>`. 경로 신설 없이 최소 변경, 기존 `/` 단독 접속도 더퀸즈로 호환.
+
+**한 것**
+- `app/api/chat/route.js`: `CLINIC_SLUG` 상수 → `resolveClinicSlug(value)` 헬퍼(값 없으면 더퀸즈 fallback). GET은 `?clinic` 쿼리, POST는 body의 `clinicSlug`에서 slug 결정. GET 응답에 `clinicPhone` 추가.
+- `app/page.js`: 마운트 시 `window.location.search`의 `clinic` 읽어 state 저장. GET fetch에 쿼리, POST body에 `clinicSlug` 포함. 헤더 병원명 하드코딩("더퀸즈여성의원") → `chatInfo.clinicName`, 오류 메시지 전화번호 하드코딩("031-997-6700") → `chatInfo.clinicPhone`.
+- `app/[slug]/ChatWidget.js`: `slug` prop 받아 iframe src `/?clinic=<slug>`.
+- `app/[slug]/page.js`: `<ChatWidget slug={slug} />`.
+
+**검증**: build 통과. dev 서버 GET 테스트 — param 없음 / `?clinic=thequeens` → 더퀸즈 정상, 없는 slug → 빈 응답(graceful).
 
 ### 챗봇 답변 버그 픽스 — 평가성 도입부 금지
 

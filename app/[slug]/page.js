@@ -446,7 +446,7 @@ export default async function ClinicHomepage({ params }) {
         </div>
       </footer>
 
-      <ChatWidget clinicName={clinic.name} />
+      <ChatWidget slug={slug} />
     </div>
   );
 }

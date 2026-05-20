@@ -46,6 +46,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [chatInfo, setChatInfo] = useState(null);
+  const [clinicSlug, setClinicSlug] = useState("");
   const [sessionId] = useState(() => generateSessionId());
   const messagesEndRef = useRef(null);
   const isOpen = chatInfo?.isOpen ?? null;
@@ -67,7 +68,11 @@ export default function Home() {
   }, [loading]);
 
   useEffect(() => {
-    fetch("/api/chat")
+    // 임베드된 홈페이지 위젯이 ?clinic=<slug> 로 병원을 지정. 없으면 더퀸즈.
+    const slug = new URLSearchParams(window.location.search).get("clinic") || "";
+    setClinicSlug(slug);
+
+    fetch(`/api/chat${slug ? `?clinic=${encodeURIComponent(slug)}` : ""}`)
       .then((r) => r.json())
       .then((data) => {
         setChatInfo(data);
@@ -136,7 +141,7 @@ export default function Home() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: messageText, sessionId }),
+        body: JSON.stringify({ message: messageText, sessionId, clinicSlug }),
       });
       const data = await res.json();
 
@@ -151,7 +156,13 @@ export default function Home() {
         addMessage(data.reply, false);
       }
     } catch {
-      addMessage("일시적인 오류가 발생했습니다. 전화로 문의해 주세요. 031-997-6700", false);
+      const phone = chatInfo?.clinicPhone;
+      addMessage(
+        `일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.${
+          phone ? ` 문의: ${phone}` : ""
+        }`,
+        false
+      );
     } finally {
       setLoading(false);
     }
@@ -166,7 +177,9 @@ export default function Home() {
           👑
         </div>
         <div className="flex-1">
-          <div className="text-white text-sm font-medium">더퀸즈여성의원</div>
+          <div className="text-white text-sm font-medium">
+            {chatInfo?.clinicName || "병원"}
+          </div>
           <div className="text-white/80 text-xs">AI 상담 채널</div>
         </div>
         {isOpen !== null && (

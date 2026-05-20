@@ -4,12 +4,11 @@
 // 닫힘 상태: 동그란 골드 버튼. 클릭 시 모달처럼 iframe 패널 열림.
 // 페이지 어디서든 data-clinictalk-open 속성 가진 element 를 클릭해도 열림.
 //
-// iframe src 는 `/` (현재 챗봇 라우트). 추후 챗봇이 slug 기반으로 분기되면
-// `/${slug}/chat` 같은 경로로 교체.
+// iframe src 는 `/?clinic=<slug>` — 챗봇이 어느 병원인지 인식하도록 slug 전달.
 
 import { useEffect, useState } from "react";
 
-export default function ChatWidget() {
+export default function ChatWidget({ slug }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -41,7 +40,7 @@ export default function ChatWidget() {
       {open && (
         <div className="fixed bottom-24 right-5 z-30 w-[min(380px,calc(100vw-2.5rem))] h-[min(620px,calc(100vh-8rem))] bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col">
           <iframe
-            src="/"
+            src={slug ? `/?clinic=${encodeURIComponent(slug)}` : "/"}
             title="AI 챗봇"
             className="w-full h-full border-0"
           />

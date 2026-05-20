@@ -15,9 +15,15 @@ const pusher = new Pusher({
   useTLS: true,
 });
 
-// 단계 7~9에서 slug 라우팅(/[clinic]/...) 도입 시 동적 결정.
-// 지금은 더퀸즈 단일 운영이라 하드코딩.
-const CLINIC_SLUG = "thequeens";
+// 챗봇이 어느 병원을 대상으로 하는지 결정.
+// 홈페이지(/[slug])에 임베드된 위젯이 ?clinic=<slug> 로 전달.
+// 값이 없으면 더퀸즈 — 기존 `/` 단독 접속(쿼리 없는 챗봇 URL) 호환.
+const DEFAULT_CLINIC_SLUG = "thequeens";
+function resolveClinicSlug(value) {
+  return typeof value === "string" && value.trim()
+    ? value.trim()
+    : DEFAULT_CLINIC_SLUG;
+}
 
 const PERSONAL_INFO_PATTERNS = {
   phone: /01[0-9][-\s]?\d{3,4}[-\s]?\d{4}/g,
@@ -62,12 +68,15 @@ function isBusinessHours() {
   return false;
 }
 
-export async function GET() {
+export async function GET(request) {
   const supabase = createServiceClient();
+  const slug = resolveClinicSlug(
+    new URL(request.url).searchParams.get("clinic")
+  );
   const { data: clinic } = await supabase
     .from("clinics")
-    .select("id, name")
-    .eq("slug", CLINIC_SLUG)
+    .select("id, name, phone")
+    .eq("slug", slug)
     .single();
 
   let currentEvent = "";
@@ -104,6 +113,7 @@ export async function GET() {
   return Response.json({
     isOpen: isBusinessHours(),
     clinicName: clinic?.name || "",
+    clinicPhone: clinic?.phone || "",
     currentEvent,
     eventImageUrl,
     disclaimer,
@@ -117,7 +127,8 @@ const MAX_REQUESTS = 10;
 export async function POST(request) {
   try {
     const supabase = createServiceClient();
-    const { message, sessionId } = await request.json();
+    const { message, sessionId, clinicSlug } = await request.json();
+    const slug = resolveClinicSlug(clinicSlug);
 
     // 1. 빈 메시지 체크
     if (!message?.trim()) {
@@ -136,7 +147,7 @@ export async function POST(request) {
     const { data: clinic, error: clinicError } = await supabase
       .from("clinics")
       .select("id, phone")
-      .eq("slug", CLINIC_SLUG)
+      .eq("slug", slug)
       .single();
 
     if (clinicError || !clinic) {
