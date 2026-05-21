@@ -75,7 +75,7 @@ export async function GET(request) {
   );
   const { data: clinic } = await supabase
     .from("clinics")
-    .select("id, name, phone")
+    .select("id, name, phone, chatbot_enabled")
     .eq("slug", slug)
     .single();
 
@@ -114,6 +114,7 @@ export async function GET(request) {
     isOpen: isBusinessHours(),
     clinicName: clinic?.name || "",
     clinicPhone: clinic?.phone || "",
+    chatbotEnabled: clinic?.chatbot_enabled !== false,
     currentEvent,
     eventImageUrl,
     disclaimer,

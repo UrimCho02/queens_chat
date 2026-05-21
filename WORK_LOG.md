@@ -38,10 +38,11 @@
 **결정**: 홈페이지 템플릿은 진료과 중립이라 그대로 두되, **챗봇만 병원별로 켜고 끌 수 있게**. 위젯 버튼은 노출(챗봇이 있다는 건 보여줌)하되 비산부인과는 채팅 대신 안내문 표시.
 
 **한 것**
-- DB: `20260521000000_add_chatbot_enabled.sql` — `clinics.chatbot_enabled` 컬럼(boolean, 기본 true). demo-internal·demo-pediatric 은 false. **Studio 적용 필요 — 미적용 시 홈페이지/챗봇이 컬럼 없음으로 깨짐**.
-- `app/[slug]/ChatWidget.js` — `chatbotEnabled` prop. false면 패널이 iframe 대신 안내문("홈페이지 디자인 미리보기입니다…"). 💬 버튼은 그대로 노출.
-- `app/[slug]/page.js` — clinic.chatbot_enabled 조회 → ChatWidget에 전달.
-- `app/api/chat/route.js` — POST에서 `chatbot_enabled=false`면 Claude 호출 없이 안내문 reply 반환 (직접 URL 접근 대비).
+- DB: `20260521000000_add_chatbot_enabled.sql` — `clinics.chatbot_enabled` 컬럼(boolean, 기본 true). demo-internal·demo-pediatric 은 false. **Studio 적용 필요 — 미적용 시 챗봇 GET/POST가 컬럼 없음으로 깨짐**.
+- **방식**: 비활성 병원도 챗봇 위젯 클릭 시 실제 챗봇 UI(헤더·인사말·디자인)가 그대로 뜸 — 프로스펙트가 챗봇 생김새를 보게. 입력만 잠금. (안내 카드로 대체 X)
+- `app/api/chat/route.js` — GET 응답에 `chatbotEnabled` 추가. POST는 `chatbot_enabled=false`면 Claude 호출 없이 안내문 reply (직접 URL 접근 대비).
+- `app/page.js` — `chatbotEnabled` false면 입력창·전송 버튼 잠금 + placeholder 변경 + "홈페이지 디자인 미리보기" 회색 배너. 나머지 UI는 정상 렌더.
+- ChatWidget·`[slug]/page.js` 는 변경 없음 — 위젯은 항상 실제 챗봇 iframe 로드.
 - `npm run build` 통과.
 
 **한계/향후**: ClinicTalk 챗봇은 현재 산부인과 전용 제품. 일반 병원에 챗봇까지 팔려면 `safety.js` 멀티 진료과화가 선행돼야 함(별도 기획). 홈페이지 템플릿만은 지금도 진료과 무관 판매 가능.

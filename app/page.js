@@ -51,6 +51,8 @@ export default function Home() {
   const messagesEndRef = useRef(null);
   const isOpen = chatInfo?.isOpen ?? null;
   const disclaimer = chatInfo?.disclaimer || DEFAULT_DISCLAIMER;
+  // 챗봇 비활성 병원(비산부인과 데모 등) — UI 는 그대로 보이되 입력 잠금.
+  const chatbotEnabled = chatInfo?.chatbotEnabled !== false;
   const inputRef = useRef(null);
   const prevLoadingRef = useRef(false);
 
@@ -132,7 +134,7 @@ export default function Home() {
 
   const sendMessage = async (text) => {
     const messageText = text || input.trim();
-    if (!messageText || loading) return;
+    if (!messageText || loading || !chatbotEnabled) return;
     setInput("");
     addMessage(messageText, true);
     setLoading(true);
@@ -206,6 +208,13 @@ export default function Home() {
       <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800 text-center flex-shrink-0 leading-snug">
         ⚠ {disclaimer}
       </div>
+
+      {/* 데모 미리보기 안내 (챗봇 비활성 병원) */}
+      {!chatbotEnabled && (
+        <div className="px-4 py-2 bg-gray-100 border-b border-gray-200 text-[11px] text-gray-600 text-center flex-shrink-0 leading-snug">
+          🔒 이 챗봇은 홈페이지 디자인 미리보기입니다. 실제 도입 시 작동합니다.
+        </div>
+      )}
 
       {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
@@ -298,13 +307,17 @@ export default function Home() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="메시지를 입력하세요..."
-          disabled={loading}
+          placeholder={
+            chatbotEnabled
+              ? "메시지를 입력하세요..."
+              : "데모 미리보기 — 입력이 비활성화되어 있어요"
+          }
+          disabled={loading || !chatbotEnabled}
           className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 text-sm outline-none focus:border-[#C9A96E] disabled:opacity-50"
         />
         <button
           onClick={() => sendMessage()}
-          disabled={loading || !input.trim()}
+          disabled={loading || !input.trim() || !chatbotEnabled}
           className="w-10 h-10 rounded-full bg-[#C9A96E] flex items-center justify-center disabled:opacity-50 flex-shrink-0 active:bg-[#b8965d]"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="white">

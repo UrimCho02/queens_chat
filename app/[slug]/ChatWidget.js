@@ -5,14 +5,12 @@
 // 페이지 어디서든 data-clinictalk-open 속성 가진 element 를 클릭해도 열림.
 //
 // iframe src 는 `/?clinic=<slug>` — 챗봇이 어느 병원인지 인식하도록 slug 전달.
-// chatbotEnabled=false 면 버튼은 노출하되 패널은 채팅 대신 안내문을 표시
-// (산부인과 전용 가드레일 한계로 비산부인과 병원은 챗봇 비활성).
+// 챗봇 비활성 병원이어도 챗봇 UI 는 그대로 노출됨 — 입력 잠금/안내는 챗봇 페이지에서 처리.
 
 import { useEffect, useState } from "react";
 
-export default function ChatWidget({ slug, chatbotEnabled = true }) {
+export default function ChatWidget({ slug }) {
   const [open, setOpen] = useState(false);
-  const disabled = chatbotEnabled === false;
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -40,32 +38,15 @@ export default function ChatWidget({ slug, chatbotEnabled = true }) {
       </button>
 
       {/* Panel */}
-      {open &&
-        (disabled ? (
-          <div className="fixed bottom-24 right-5 z-30 w-[min(380px,calc(100vw-2.5rem))] bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="bg-[#C9A96E] px-5 py-4">
-              <div className="text-white font-medium text-sm">
-                💬 AI 챗봇 상담
-              </div>
-            </div>
-            <div className="p-7 text-center">
-              <div className="text-4xl mb-3">💬</div>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                이 페이지는 홈페이지 디자인 미리보기입니다.
-                <br />
-                AI 챗봇 상담은 실제 도입 시 병원에 맞춰 제공됩니다.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="fixed bottom-24 right-5 z-30 w-[min(380px,calc(100vw-2.5rem))] h-[min(620px,calc(100vh-8rem))] bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col">
-            <iframe
-              src={slug ? `/?clinic=${encodeURIComponent(slug)}` : "/"}
-              title="AI 챗봇"
-              className="w-full h-full border-0"
-            />
-          </div>
-        ))}
+      {open && (
+        <div className="fixed bottom-24 right-5 z-30 w-[min(380px,calc(100vw-2.5rem))] h-[min(620px,calc(100vh-8rem))] bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col">
+          <iframe
+            src={slug ? `/?clinic=${encodeURIComponent(slug)}` : "/"}
+            title="AI 챗봇"
+            className="w-full h-full border-0"
+          />
+        </div>
+      )}
     </>
   );
 }
