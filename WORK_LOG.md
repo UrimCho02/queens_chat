@@ -29,6 +29,23 @@
 
 ---
 
+## 2026-05-21
+
+### 데모 챗봇 분리 + 랜딩페이지 홈페이지 템플릿 섹션
+
+**데모 챗봇 — 실 병원 어드민 오염 차단**
+- 문제: 데모 가상 병원(`demo-*`) 챗봇 사용 시 inquiries 저장 + Pusher가 `admin-channel`(단일 채널)로 알림 → 더퀸즈 어드민 실시간 피드에 데모 문의가 튐. (DB 목록은 clinic_id로 이미 분리됨 — Pusher만 새던 것.)
+- `app/api/chat/route.js`: slug `demo-` 접두 → `isDemo`. 데모 병원은 inquiries INSERT(개인정보 차단 건 포함)와 Pusher trigger를 모두 건너뜀. 챗봇 AI 응답은 정상 작동(데모 가치 유지).
+- 비용은 Haiku + 세션당 10건 제한으로 무시할 수준이라 별도 일일 한도는 안 둠.
+
+**랜딩페이지 — 홈페이지 템플릿 둘러보기 섹션**
+- `clinictalk-landing/index.html` (서브모듈): features ~ pricing 사이에 `#templates` 섹션 신설. 클래식/모던/소프트 3종 카드 → 데모 홈페이지로 링크(`queens-chat.vercel.app/demo-obgyn|internal|pediatric`). nav에 [홈페이지] 추가.
+- 기존 디자인 시스템(CSS 변수·클래스) 재사용 + `.template-*` CSS 추가. 모바일 1열 분기 포함.
+
+**검증**: `npm run build` 통과.
+
+---
+
 ## 2026-05-20
 
 ### 홈페이지 템플릿 3종 + 데모 가상 병원 3곳

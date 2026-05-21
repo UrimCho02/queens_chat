@@ -158,22 +158,29 @@ export async function POST(request) {
       );
     }
 
+    // 데모 가상 병원(slug 'demo-' 접두)은 영업 시연용 — 실 직원이 없으므로
+    // 문의를 inquiries 에 저장하지 않고 Pusher 알림도 보내지 않음.
+    // (실제 병원 어드민 페이지/실시간 알림 오염 방지. 챗봇 AI 응답은 정상 작동.)
+    const isDemo = slug.startsWith("demo-");
+
     // 3. 개인정보 감지 (LLM 호출 전 차단)
     if (containsPersonalInfo(message)) {
       const blockMessage = `개인정보 보호를 위해 성함, 연락처, 주민번호 등 개인을 식별할 수 있는 정보는 입력하지 말아주세요. 본인확인이 필요한 문의는 진료시간 내 전화(${clinic.phone})로 직접 문의해주시거나 내원 시 직원에게 안내받으실 수 있어요 😊`;
 
-      const maskedMessage = maskPersonalInfo(message);
-      await supabase
-        .from("inquiries")
-        .insert({
-          clinic_id: clinic.id,
-          session_id: sessionId,
-          user_message: maskedMessage,
-          ai_draft: blockMessage,
-          category: "기타",
-          is_staff_required: false,
-          status: "blocked",
-        });
+      if (!isDemo) {
+        const maskedMessage = maskPersonalInfo(message);
+        await supabase
+          .from("inquiries")
+          .insert({
+            clinic_id: clinic.id,
+            session_id: sessionId,
+            user_message: maskedMessage,
+            ai_draft: blockMessage,
+            category: "기타",
+            is_staff_required: false,
+            status: "blocked",
+          });
+      }
 
       return Response.json({ reply: blockMessage, isStaffRequired: false });
     }
@@ -224,33 +231,34 @@ export async function POST(request) {
       .replace(/CATEGORY:[^\n]+/, "")
       .trim();
 
-    // 8. Supabase에 저장
-    const { data: inquiry, error: dbError } = await supabase
-      .from("inquiries")
-      .insert({
-        clinic_id: clinic.id,
-        session_id: sessionId,
-        user_message: message,
-        ai_draft: cleanReply,
+    // 8~9. Supabase 저장 + Pusher 실시간 전송 — 데모 병원은 건너뜀.
+    if (!isDemo) {
+      const { data: inquiry, error: dbError } = await supabase
+        .from("inquiries")
+        .insert({
+          clinic_id: clinic.id,
+          session_id: sessionId,
+          user_message: message,
+          ai_draft: cleanReply,
+          category,
+          is_staff_required: isStaffRequired,
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (dbError) console.error("DB 저장 오류:", dbError);
+
+      await pusher.trigger("admin-channel", "new-inquiry", {
+        id: inquiry?.id,
+        sessionId,
+        userMessage: message,
+        aiDraft: cleanReply,
+        isStaffRequired,
         category,
-        is_staff_required: isStaffRequired,
-        status: "pending",
-      })
-      .select()
-      .single();
-
-    if (dbError) console.error("DB 저장 오류:", dbError);
-
-    // 9. Pusher로 직원 페이지에 실시간 전송
-    await pusher.trigger("admin-channel", "new-inquiry", {
-      id: inquiry?.id,
-      sessionId,
-      userMessage: message,
-      aiDraft: cleanReply,
-      isStaffRequired,
-      category,
-      timestamp: new Date().toISOString(),
-    });
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     return Response.json({ reply: cleanReply, isStaffRequired });
 
