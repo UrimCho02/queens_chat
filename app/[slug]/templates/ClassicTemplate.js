@@ -37,7 +37,7 @@ export default function ClassicTemplate({ data }) {
                 className="h-9 sm:h-10 w-auto flex-shrink-0"
               />
             ) : (
-              <span className="text-lg">👑</span>
+              <span className="text-xl text-[#C9A96E] leading-none">✦</span>
             )}
             <div className="font-semibold text-gray-900 text-base sm:text-lg truncate">
               {clinic.name}
