@@ -9,8 +9,8 @@
 환자가 전화 대신 채팅으로 24시간 진료시간/예약/비용/일반 의학 정보를 문의할 수 있고, 직원은 어드민 페이지에서 AI 자동 답변을 검토·발송한다. 의료법 가드레일이 코드 단에 박혀 있어 증상 진단 같은 위험 영역은 자동으로 직원 확인으로 전환된다.
 
 **관련 리포 / 배포**
-- 챗봇 본체: `UrimCho02/queens_chat` → Vercel **queens-chat** 프로젝트 (`queens-chat.vercel.app`). 디렉토리명 `obgyn-demo` 와 다름.
-- 랜딩 페이지: `UrimCho02/clinictalk-landing` (서브모듈로 마운트)
+- 챗봇 본체: `UrimCho02/queens_chat` → Vercel **queens-chat** 프로젝트 (`queens-chat.vercel.app`). 디렉토리명 `obgyn-demo` 와 다름. 커스텀 도메인 미연결 (더퀸즈가 도메인 구입 시 연결 예정).
+- 랜딩 페이지: `UrimCho02/clinictalk-landing` (서브모듈로 마운트). 별도 Vercel 프로젝트, 도메인 **clinictalk.kr**.
 
 ## 기술 스택
 
