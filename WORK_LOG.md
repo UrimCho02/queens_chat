@@ -31,6 +31,12 @@
 
 ## 2026-05-21
 
+### 랜딩페이지 챗봇 체험 위젯
+
+랜딩페이지(`clinictalk.kr`)에 떠다니는 챗봇 위젯 추가 — 홈페이지를 신청 안 하고 챗봇만 보려는 방문자도 바로 체험 가능하게.
+- `clinictalk-landing/index.html` 끝에 자체 위젯(바닐라 HTML/CSS/JS): 우하단 💬 버튼 → 클릭 시 `queens-chat.vercel.app/?clinic=demo-obgyn` 챗봇 iframe 패널 토글.
+- `demo-obgyn`(산부인과) 챗봇은 정상 작동 + 데모라 inquiries 미저장. queens-chat에 iframe 차단 헤더(X-Frame-Options/CSP) 없어 cross-origin 임베드 가능 확인.
+
 ### 비산부인과 병원 챗봇 비활성 — chatbot_enabled 플래그
 
 **문제**: 데모 챗봇이 진료과 무관하게 전부 산부인과처럼 답함. 원인은 `safety.js`(의료법 가드레일)가 산부인과 전용 하드코딩 — `buildPrompt`이 모든 병원에 그대로 적용. 내과/소아과 데모 챗봇에서 자궁경부암 검사 안내 등이 나옴.
