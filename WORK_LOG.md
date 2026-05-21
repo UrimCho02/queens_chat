@@ -31,6 +31,23 @@
 
 ## 2026-05-21
 
+### 비산부인과 병원 챗봇 비활성 — chatbot_enabled 플래그
+
+**문제**: 데모 챗봇이 진료과 무관하게 전부 산부인과처럼 답함. 원인은 `safety.js`(의료법 가드레일)가 산부인과 전용 하드코딩 — `buildPrompt`이 모든 병원에 그대로 적용. 내과/소아과 데모 챗봇에서 자궁경부암 검사 안내 등이 나옴.
+
+**결정**: 홈페이지 템플릿은 진료과 중립이라 그대로 두되, **챗봇만 병원별로 켜고 끌 수 있게**. 위젯 버튼은 노출(챗봇이 있다는 건 보여줌)하되 비산부인과는 채팅 대신 안내문 표시.
+
+**한 것**
+- DB: `20260521000000_add_chatbot_enabled.sql` — `clinics.chatbot_enabled` 컬럼(boolean, 기본 true). demo-internal·demo-pediatric 은 false. **Studio 적용 필요 — 미적용 시 홈페이지/챗봇이 컬럼 없음으로 깨짐**.
+- `app/[slug]/ChatWidget.js` — `chatbotEnabled` prop. false면 패널이 iframe 대신 안내문("홈페이지 디자인 미리보기입니다…"). 💬 버튼은 그대로 노출.
+- `app/[slug]/page.js` — clinic.chatbot_enabled 조회 → ChatWidget에 전달.
+- `app/api/chat/route.js` — POST에서 `chatbot_enabled=false`면 Claude 호출 없이 안내문 reply 반환 (직접 URL 접근 대비).
+- `npm run build` 통과.
+
+**한계/향후**: ClinicTalk 챗봇은 현재 산부인과 전용 제품. 일반 병원에 챗봇까지 팔려면 `safety.js` 멀티 진료과화가 선행돼야 함(별도 기획). 홈페이지 템플릿만은 지금도 진료과 무관 판매 가능.
+
+**배포 순서**: `20260521000000` Studio 적용 → 그 다음 배포.
+
 ### 데모 챗봇 분리 + 랜딩페이지 홈페이지 템플릿 섹션
 
 **데모 챗봇 — 실 병원 어드민 오염 차단**

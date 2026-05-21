@@ -146,7 +146,7 @@ export async function POST(request) {
     // 병원 lookup (id, phone 필요)
     const { data: clinic, error: clinicError } = await supabase
       .from("clinics")
-      .select("id, phone")
+      .select("id, phone, chatbot_enabled")
       .eq("slug", slug)
       .single();
 
@@ -162,6 +162,16 @@ export async function POST(request) {
     // 문의를 inquiries 에 저장하지 않고 Pusher 알림도 보내지 않음.
     // (실제 병원 어드민 페이지/실시간 알림 오염 방지. 챗봇 AI 응답은 정상 작동.)
     const isDemo = slug.startsWith("demo-");
+
+    // 챗봇 비활성 병원(비산부인과 데모 등) — 채팅 대신 안내문만 반환.
+    // 가드레일(safety.js)이 산부인과 전용이라 비산부인과는 챗봇을 끔.
+    if (clinic.chatbot_enabled === false) {
+      return Response.json({
+        reply:
+          "이 페이지는 홈페이지 디자인 미리보기입니다. AI 챗봇 상담은 실제 도입 시 병원에 맞춰 제공됩니다.",
+        isStaffRequired: false,
+      });
+    }
 
     // 3. 개인정보 감지 (LLM 호출 전 차단)
     if (containsPersonalInfo(message)) {

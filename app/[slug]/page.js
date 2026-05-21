@@ -39,7 +39,7 @@ export default async function ClinicHomepage({ params, searchParams }) {
 
   const { data: clinic } = await supabase
     .from("clinics")
-    .select("id, name, phone, address, logo_url, template")
+    .select("id, name, phone, address, logo_url, template, chatbot_enabled")
     .eq("slug", slug)
     .eq("is_active", true)
     .maybeSingle();
@@ -66,7 +66,7 @@ export default async function ClinicHomepage({ params, searchParams }) {
   return (
     <>
       <Template data={data} />
-      <ChatWidget slug={slug} />
+      <ChatWidget slug={slug} chatbotEnabled={clinic.chatbot_enabled} />
     </>
   );
 }
