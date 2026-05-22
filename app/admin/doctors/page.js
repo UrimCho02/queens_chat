@@ -36,6 +36,7 @@ export default async function DoctorsPage() {
       initialImages={initialImages}
       clinicName={clinic.name}
       logoUrl={clinic.logo_url}
+      isSuperadmin={role === "superadmin"}
     />
   );
 }

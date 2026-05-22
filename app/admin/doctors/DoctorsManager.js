@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import HeaderIcon from "../HeaderIcon";
 
-export default function DoctorsManager({ initialImages, clinicName, logoUrl }) {
+export default function DoctorsManager({ initialImages, clinicName, logoUrl, isSuperadmin }) {
   const router = useRouter();
   const [images, setImages] = useState(initialImages || []);
   const [savedImages, setSavedImages] = useState(initialImages || []);
@@ -154,6 +154,14 @@ export default function DoctorsManager({ initialImages, clinicName, logoUrl }) {
           >
             변경이력
           </button>
+          {isSuperadmin && (
+            <button
+              onClick={() => router.push("/admin/clinics")}
+              className="bg-white text-[#C9A96E] text-xs px-3 py-1.5 rounded-full hover:bg-white/90 transition-colors cursor-pointer font-medium"
+            >
+              병원 전환
+            </button>
+          )}
           <button
             onClick={handleLogout}
             className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"

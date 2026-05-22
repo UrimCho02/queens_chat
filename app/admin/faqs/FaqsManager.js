@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import HeaderIcon from "../HeaderIcon";
 
-export default function FaqsManager({ initialFaqs, clinicName, logoUrl }) {
+export default function FaqsManager({ initialFaqs, clinicName, logoUrl, isSuperadmin }) {
   const router = useRouter();
   const [faqs, setFaqs] = useState(initialFaqs);
   const [status, setStatus] = useState(null);
@@ -120,6 +120,14 @@ export default function FaqsManager({ initialFaqs, clinicName, logoUrl }) {
           >
             변경이력
           </button>
+          {isSuperadmin && (
+            <button
+              onClick={() => router.push("/admin/clinics")}
+              className="bg-white text-[#C9A96E] text-xs px-3 py-1.5 rounded-full hover:bg-white/90 transition-colors cursor-pointer font-medium"
+            >
+              병원 전환
+            </button>
+          )}
           <button
             onClick={handleLogout}
             className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"

@@ -31,6 +31,7 @@ export default async function FaqsPage() {
       initialFaqs={faqs || []}
       clinicName={clinic.name}
       logoUrl={clinic.logo_url}
+      isSuperadmin={role === "superadmin"}
     />
   );
 }

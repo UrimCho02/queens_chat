@@ -36,7 +36,7 @@ function formatTime(iso) {
   return `${month}/${day} ${time}`;
 }
 
-export default function LogsList({ initialLogs, clinicName, logoUrl }) {
+export default function LogsList({ initialLogs, clinicName, logoUrl, isSuperadmin }) {
   const router = useRouter();
   const [logs] = useState(initialLogs);
   const [openIds, setOpenIds] = useState(() => new Set());
@@ -100,6 +100,14 @@ export default function LogsList({ initialLogs, clinicName, logoUrl }) {
           >
             회복가이드
           </button>
+          {isSuperadmin && (
+            <button
+              onClick={() => router.push("/admin/clinics")}
+              className="bg-white text-[#C9A96E] text-xs px-3 py-1.5 rounded-full hover:bg-white/90 transition-colors cursor-pointer font-medium"
+            >
+              병원 전환
+            </button>
+          )}
           <button
             onClick={handleLogout}
             className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"

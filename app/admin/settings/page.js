@@ -28,6 +28,7 @@ export default async function SettingsPage() {
 
   return (
     <SettingsForm
+      isSuperadmin={role === "superadmin"}
       initial={{
         name: clinic.name || "",
         phone: clinic.phone || "",

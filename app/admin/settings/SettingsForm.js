@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import HeaderIcon from "../HeaderIcon";
 
 const DAY_OPTIONS = [
@@ -50,8 +51,16 @@ function initNotices(s) {
     .map((n) => ({ image_url: n.image_url }));
 }
 
-export default function SettingsForm({ initial }) {
+export default function SettingsForm({ initial, isSuperadmin }) {
   const router = useRouter();
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
+
   const s = initial.settings || {};
   const hours = s.hours || {};
 
@@ -412,6 +421,20 @@ export default function SettingsForm({ initial }) {
             className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
           >
             변경이력
+          </button>
+          {isSuperadmin && (
+            <button
+              onClick={() => router.push("/admin/clinics")}
+              className="bg-white text-[#C9A96E] text-xs px-3 py-1.5 rounded-full hover:bg-white/90 transition-colors cursor-pointer font-medium"
+            >
+              병원 전환
+            </button>
+          )}
+          <button
+            onClick={handleLogout}
+            className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
+          >
+            로그아웃
           </button>
         </div>
       </div>

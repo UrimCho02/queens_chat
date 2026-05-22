@@ -44,8 +44,10 @@ export async function POST(request) {
       );
     }
 
+    // httpOnly 아님 — 로그아웃 시 클라이언트(/login)에서 초기화할 수 있어야 함.
+    // 민감정보 아님(병원 id). getCurrentClinic 이 superadmin 검증 후에만 읽음.
     cookieStore.set(SELECTED_CLINIC_COOKIE, clinic.id, {
-      httpOnly: true,
+      httpOnly: false,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 30, // 30일

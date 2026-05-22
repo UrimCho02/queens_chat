@@ -34,6 +34,7 @@ export default async function LogsPage() {
       initialLogs={logs || []}
       clinicName={clinic.name}
       logoUrl={clinic.logo_url}
+      isSuperadmin={role === "superadmin"}
     />
   );
 }
