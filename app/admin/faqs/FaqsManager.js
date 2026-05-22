@@ -2,8 +2,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import HeaderIcon from "../HeaderIcon";
 
-export default function FaqsManager({ initialFaqs, clinicName }) {
+export default function FaqsManager({ initialFaqs, clinicName, logoUrl }) {
   const router = useRouter();
   const [faqs, setFaqs] = useState(initialFaqs);
   const [status, setStatus] = useState(null);
@@ -80,7 +81,7 @@ export default function FaqsManager({ initialFaqs, clinicName }) {
       {/* 헤더 */}
       <div className="bg-[#C9A96E] px-4 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-2">
-          <span className="text-lg">👑</span>
+          <HeaderIcon logoUrl={logoUrl} />
           <div>
             <div className="text-white text-sm font-medium">
               {clinicName || "병원"}

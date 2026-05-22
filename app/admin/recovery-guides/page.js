@@ -26,6 +26,10 @@ export default async function RecoveryGuidesPage() {
     .order("sort_order");
 
   return (
-    <GuidesManager initialGuides={guides || []} clinicName={clinic.name} />
+    <GuidesManager
+      initialGuides={guides || []}
+      clinicName={clinic.name}
+      logoUrl={clinic.logo_url}
+    />
   );
 }

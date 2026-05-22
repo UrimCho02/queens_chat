@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { diffJsonb } from "@/lib/utils/diffJsonb";
+import HeaderIcon from "../HeaderIcon";
 
 const TABLE_LABELS = {
   clinics: "병원 정보",
@@ -35,7 +36,7 @@ function formatTime(iso) {
   return `${month}/${day} ${time}`;
 }
 
-export default function LogsList({ initialLogs, clinicName }) {
+export default function LogsList({ initialLogs, clinicName, logoUrl }) {
   const router = useRouter();
   const [logs] = useState(initialLogs);
   const [openIds, setOpenIds] = useState(() => new Set());
@@ -60,7 +61,7 @@ export default function LogsList({ initialLogs, clinicName }) {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-[#C9A96E] px-4 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-2">
-          <span className="text-lg">👑</span>
+          <HeaderIcon logoUrl={logoUrl} />
           <div>
             <div className="text-white text-sm font-medium">
               {clinicName || "병원"}

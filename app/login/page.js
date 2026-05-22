@@ -39,9 +39,8 @@ export default function Login() {
     <div className="min-h-screen bg-[#F5EFE6] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
         <div className="text-center mb-6">
-          <div className="text-3xl mb-2">👑</div>
-          <div className="text-lg font-medium text-gray-800">더퀸즈여성의원</div>
-          <div className="text-sm text-gray-500 mt-1">직원 전용 관리 페이지</div>
+          <div className="text-2xl font-bold text-[#C9A96E] mb-1">ClinicTalk</div>
+          <div className="text-sm text-gray-500">병원 관리자 로그인</div>
         </div>
         <input
           type="email"

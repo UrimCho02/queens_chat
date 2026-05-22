@@ -29,6 +29,7 @@ export default async function FaqsPage() {
     <FaqsManager
       initialFaqs={faqs || []}
       clinicName={clinic.name}
+      logoUrl={clinic.logo_url}
     />
   );
 }

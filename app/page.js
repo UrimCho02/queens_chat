@@ -6,7 +6,37 @@ function generateSessionId() {
   return Math.random().toString(36).substring(2, 10);
 }
 
-function MessageText({ text, isUser }) {
+// 챗봇 색 테마 — 병원 홈페이지 템플릿(classic/modern/soft)에 맞춰 자동 적용.
+// 위젯이 홈페이지에 임베드되므로 챗봇과 홈페이지 색을 맞춘다.
+const CHAT_THEMES = {
+  classic: { primary: "#C9A96E", bg: "#F5EFE6" }, // 골드
+  modern: { primary: "#2563EB", bg: "#EFF6FF" }, // 블루
+  soft: { primary: "#10B981", bg: "#ECFDF5" }, // 민트
+};
+
+function ChatIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
+    </svg>
+  );
+}
+
+// 챗봇 메시지 옆 아바타. 옛 👑(더퀸즈 전용) 대신 진료과·병원 중립 아이콘.
+function BotAvatar({ primary, topMargin }) {
+  return (
+    <div
+      className={`w-7 h-7 rounded-full flex items-center justify-center mr-2 flex-shrink-0 ${
+        topMargin ? "mt-1" : ""
+      }`}
+      style={{ backgroundColor: primary }}
+    >
+      <ChatIcon className="w-3.5 h-3.5 text-white" />
+    </div>
+  );
+}
+
+function MessageText({ text, isUser, accent }) {
   const lines = text.split("\n");
   return (
     <>
@@ -16,13 +46,13 @@ function MessageText({ text, isUser }) {
           <span key={lineIdx}>
             {parts.map((part, i) =>
               /https?:\/\/[^\s]+/.test(part) ? (
-                <a                
+                <a
                   key={i}
                   href={part}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline break-all"
-                  style={{ color: isUser ? "rgba(255,255,255,0.9)" : "#C9A96E" }}
+                  style={{ color: isUser ? "rgba(255,255,255,0.9)" : accent }}
                 >
                   {part}
                 </a>
@@ -53,6 +83,8 @@ export default function Home() {
   const disclaimer = chatInfo?.disclaimer || DEFAULT_DISCLAIMER;
   // 챗봇 비활성 병원(비산부인과 데모 등) — UI 는 그대로 보이되 입력 잠금.
   const chatbotEnabled = chatInfo?.chatbotEnabled !== false;
+  // 병원 템플릿에 맞춘 색 테마. 응답 도착 전엔 클래식(골드)로 fallback.
+  const theme = CHAT_THEMES[chatInfo?.template] || CHAT_THEMES.classic;
   const inputRef = useRef(null);
   const prevLoadingRef = useRef(false);
 
@@ -81,7 +113,7 @@ export default function Home() {
         const clinicName = data.clinicName || "병원";
         const greeting = {
           id: 1,
-          text: `안녕하세요! ${clinicName} AI 상담 채널입니다. 👑\n진료시간, 예약, 비용 등 궁금하신 점을 편하게 물어보세요.\n\n※ 증상 관련 문의는 담당 직원이 확인 후 답변드립니다.`,
+          text: `안녕하세요! ${clinicName} AI 상담 채널입니다.\n진료시간, 예약, 비용 등 궁금하신 점을 편하게 물어보세요.\n\n※ 증상 관련 문의는 담당 직원이 확인 후 답변드립니다.`,
           isUser: false,
           isStaff: false,
         };
@@ -171,13 +203,27 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#F5EFE6]" style={{ maxHeight: "100dvh" }}>
+    <div
+      className="flex flex-col h-screen"
+      style={{ maxHeight: "100dvh", backgroundColor: theme.bg }}
+    >
 
       {/* 헤더 */}
-      <div className="bg-[#C9A96E] px-4 py-3 flex items-center gap-3 flex-shrink-0">
-        <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg">
-          👑
-        </div>
+      <div
+        className="px-4 py-3 flex items-center gap-3 flex-shrink-0"
+        style={{ backgroundColor: theme.primary }}
+      >
+        {chatInfo?.logoUrl ? (
+          <img
+            src={chatInfo.logoUrl}
+            alt=""
+            className="w-9 h-9 rounded-full object-contain bg-white p-1 flex-shrink-0"
+          />
+        ) : (
+          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <ChatIcon className="w-5 h-5 text-white" />
+          </div>
+        )}
         <div className="flex-1">
           <div className="text-white text-sm font-medium">
             {chatInfo?.clinicName || "병원"}
@@ -222,11 +268,12 @@ export default function Home() {
           if (msg.isMenu) {
             return (
               <div key={msg.id} className="flex justify-start">
-                <div className="w-7 h-7 rounded-full bg-[#C9A96E] flex items-center justify-center text-sm mr-2 flex-shrink-0 mt-1">
-                  👑
-                </div>
+                <BotAvatar primary={theme.primary} topMargin />
                 <div className="max-w-[78%] rounded-2xl overflow-hidden shadow-sm bg-white border border-gray-100">
-                  <div className="bg-[#C9A96E] text-white text-sm font-medium px-4 py-2.5">
+                  <div
+                    className="text-white text-sm font-medium px-4 py-2.5"
+                    style={{ backgroundColor: theme.primary }}
+                  >
                     {msg.menu.header}
                   </div>
                   <div className="flex flex-col">
@@ -235,7 +282,7 @@ export default function Home() {
                         key={idx}
                         onClick={() => sendMessage(item.text)}
                         disabled={loading}
-                        className="text-left px-4 py-3 text-sm text-gray-700 hover:bg-amber-50 active:bg-amber-100 border-t border-gray-100 first:border-t-0 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                        className="text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 border-t border-gray-100 first:border-t-0 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                       >
                         {item.icon && <span>{item.icon}</span>}
                         <span>{item.label}</span>
@@ -248,20 +295,18 @@ export default function Home() {
           }
           return (
             <div key={msg.id} className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}>
-              {!msg.isUser && (
-                <div className="w-7 h-7 rounded-full bg-[#C9A96E] flex items-center justify-center text-sm mr-2 flex-shrink-0 mt-1">
-                  👑
-                </div>
-              )}
-              <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm
+              {!msg.isUser && <BotAvatar primary={theme.primary} topMargin />}
+              <div
+                className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm
                 ${msg.isUser
-                  ? "bg-[#C9A96E] text-white rounded-tr-sm"
+                  ? "text-white rounded-tr-sm"
                   : msg.isStaff
                   ? "bg-blue-50 border border-blue-200 text-gray-800 rounded-tl-sm"
                   : msg.isEvent
                   ? "bg-amber-50 border border-amber-200 text-gray-800 rounded-tl-sm"
                   : "bg-white text-gray-800 rounded-tl-sm"
                 }`}
+                style={msg.isUser ? { backgroundColor: theme.primary } : undefined}
               >
                 {msg.isStaff && (
                   <div className="text-xs text-blue-500 font-medium mb-1">직원 답변</div>
@@ -280,7 +325,7 @@ export default function Home() {
                     />
                   </a>
                 )}
-                <MessageText text={msg.text} isUser={msg.isUser} />
+                <MessageText text={msg.text} isUser={msg.isUser} accent={theme.primary} />
               </div>
             </div>
           );
@@ -288,9 +333,7 @@ export default function Home() {
 
         {loading && (
           <div className="flex justify-start">
-            <div className="w-7 h-7 rounded-full bg-[#C9A96E] flex items-center justify-center text-sm mr-2 flex-shrink-0">
-              👑
-            </div>
+            <BotAvatar primary={theme.primary} />
             <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm text-gray-400 shadow-sm">
               입력 중...
             </div>
@@ -313,12 +356,13 @@ export default function Home() {
               : "데모 미리보기 — 입력이 비활성화되어 있어요"
           }
           disabled={loading || !chatbotEnabled}
-          className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 text-sm outline-none focus:border-[#C9A96E] disabled:opacity-50"
+          className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 text-sm outline-none focus:border-gray-400 disabled:opacity-50"
         />
         <button
           onClick={() => sendMessage()}
           disabled={loading || !input.trim() || !chatbotEnabled}
-          className="w-10 h-10 rounded-full bg-[#C9A96E] flex items-center justify-center disabled:opacity-50 flex-shrink-0 active:bg-[#b8965d]"
+          className="w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 flex-shrink-0"
+          style={{ backgroundColor: theme.primary }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />

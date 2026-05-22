@@ -31,6 +31,10 @@ export default async function DoctorsPage() {
     : [];
 
   return (
-    <DoctorsManager initialImages={initialImages} clinicName={clinic.name} />
+    <DoctorsManager
+      initialImages={initialImages}
+      clinicName={clinic.name}
+      logoUrl={clinic.logo_url}
+    />
   );
 }

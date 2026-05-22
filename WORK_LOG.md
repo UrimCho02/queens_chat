@@ -20,12 +20,61 @@
   - 로고 업로드 (`더퀸즈여성의원_9월(바뀐거설명).jpg`)
   - 공지 이미지 (이달의 이벤트, 진료 일정/임시변경사항) 등록
 
-그 외 우선순위:
-- 신규 병원 온보딩 흐름 (clinics INSERT + 직원 계정 생성 + 기본 settings seed) — superadmin 페이지 또는 SQL 가이드.
-
 ## 검토 대기 (의사결정 필요)
 
 - **챗봇 메뉴 다단계화 (서브메뉴)** — 닥터챗봇 참고. 현재 `chat_menu.items`는 단층(클릭 → 자동 입력). 닥터챗봇은 클릭 → 서브 카테고리 펼침. 결정 사항: (1) 환자 UX 가치가 충분한지 (현재 단층이 단순/명료) (2) 데이터 모델 — items에 `children` 배열 / 별도 메뉴 트리 테이블. 원장님 논의 후 결정.
+
+---
+
+## 2026-05-22
+
+### 챗봇 색 테마 병원별 적용 + 더퀸즈 브랜딩(👑) 제거
+
+**계기**: 사용자 질문 — 챗봇 커스터마이징 범위 점검 중, 챗봇 UI 디자인이 더퀸즈 골드 테마로 하드코딩돼 모든 병원 챗봇이 동일하게 보이는 문제 + 인사말·아바타에 왕관 이모지(👑, 더퀸즈 전용 브랜딩)가 박혀 멀티테넌트에서 그대로 노출되던 문제 확인.
+
+**결정**: 챗봇 색을 병원 홈페이지 템플릿(`clinics.template`)에 맞춰 자동 적용. 위젯이 홈페이지에 임베드되므로 색을 맞추는 게 자연스러움. 새 DB 컬럼 없이 기존 template 컬럼 재사용.
+
+**한 것**
+- `app/api/chat/route.js` GET — clinic select에 `template` 추가, 응답에 `template` 포함 (fallback `classic`).
+- `app/page.js` 재작성:
+  - `CHAT_THEMES` 맵 — classic=골드(#C9A96E/#F5EFE6), modern=블루(#2563EB/#EFF6FF), soft=민트(#10B981/#ECFDF5). 템플릿 색과 일치.
+  - 하드코딩 `bg-[#C9A96E]`/`bg-[#F5EFE6]` 전부 제거 → `theme` 기반 inline `style`. (Tailwind arbitrary 클래스는 런타임 동적 불가라 inline style 사용.)
+  - 👑 제거 — 인사말에서 삭제, 아바타 4곳(헤더/메뉴/메시지/로딩)은 진료과 중립 채팅버블 SVG 아이콘(`ChatIcon`)으로 교체. `BotAvatar` 컴포넌트로 통일.
+  - 입력창 focus 색·메뉴 hover 색을 골드 → 중립 회색으로 (테마와 무관하게 깔끔하도록).
+- `npm run build` 통과.
+
+**참고 (사용자와 논의)**: 홈페이지 템플릿 3종이 단일 페이지 + 색·레이아웃 차이뿐 — 1차 의원 타겟엔 단일 페이지가 적합(과한 멀티페이지 불필요). 다만 3종 차별화가 약하면 향후 레이아웃 구조 차이를 더 벌리는 방향 검토. 지금은 보류.
+
+**후속 — 위젯 색 + 헤더 아이콘 로고화**
+- 위 작업이 챗봇 본체(iframe)만 색 적용하고 홈페이지 떠다니는 위젯 버튼은 골드로 남아 있던 버그 수정. `app/[slug]/ChatWidget.js` — `template` prop 받아 버튼 색 적용(`WIDGET_COLORS`). `app/[slug]/page.js`가 `templateKey`(=`?template=` override 반영) 전달.
+- **헤더 아이콘 = 병원 로고 자동 사용** (사용자 선택). 옛 👑(더퀸즈 전용)을 전 헤더에서 제거하고, 병원이 `/admin/settings`에 올린 로고를 헤더 아이콘으로 자동 사용 → 없으면 중립 채팅 아이콘.
+  - 공용 컴포넌트 `app/admin/HeaderIcon.js` — `logoUrl` 있으면 `<img>`, 없으면 중립 SVG.
+  - 챗봇 헤더(`app/page.js`): `/api/chat` GET이 `logoUrl` 반환 → 헤더 아바타가 로고/중립 분기. 메시지 옆 작은 아바타는 중립 아이콘 유지(작은 원에 로고 반복은 지저분).
+  - 어드민 헤더 6곳(admin/faqs/settings/doctors/recovery-guides/logs) — `HeaderIcon` 적용. 각 서버 페이지가 `clinic.logo_url` 전달. `admin/page.js`는 client라 `/api/inquiries` GET 응답에 `clinicName`·`logoUrl` 추가(헤더에 하드코딩돼 있던 "더퀸즈여성의원"도 동적으로 교체).
+  - `/login`: 모든 병원 공유 화면이라 병원 로고 불가 → 더퀸즈 👑+병원명 하드코딩을 **ClinicTalk SaaS 브랜딩**으로 교체.
+  - 온보딩 페이지 헤더(superadmin)도 중립 아이콘.
+- `npm run build` 통과.
+
+### 신규 병원 온보딩 흐름 — superadmin UI 페이지
+
+**목적**: 멀티테넌트 9단계 중 마지막 남은 큰 코딩 작업. 새 병원을 받을 때 `clinics` + `clinic_settings` 생성 + 직원 로그인 계정 생성 + `clinic_users` 매핑을 한 번에 처리. 그동안은 Studio에서 수동(5D 방식)이었음.
+
+**결정** (사용자 선택)
+- superadmin UI 페이지 방식 (SQL 가이드 X). 병원 늘 때마다 재사용.
+- 직원 Auth 계정 생성도 온보딩 폼에 포함 — service_role 의 `auth.admin.createUser` 사용.
+
+**한 것** (마이그레이션 불필요 — clinics/clinic_settings/clinic_users 가 이미 모든 필드 보유)
+- `app/api/onboarding/route.js` — POST. superadmin 전용(role 체크). 입력 검증(slug 정규식·예약어·`demo-` 접두 차단, 비번 8자, 이메일). 처리 순서: ① Auth 계정 생성(실패 확률 최고라 먼저) → ② clinics INSERT → ③ clinic_settings INSERT(기본 settings 골격) → ④ clinic_users 매핑 → ⑤ change_log. 중간 실패 시 앞 단계 rollback(clinic 삭제는 settings/매핑 cascade, Auth 계정은 deleteUser).
+- `app/admin/onboarding/page.js` — superadmin 가드(일반 admin → `/admin` redirect).
+- `app/admin/onboarding/OnboardingForm.js` — 입력 폼(병원정보/홈페이지·챗봇/직원계정 3섹션) + 등록 완료 화면(홈페이지·챗봇 링크, 직원 ID/임시비번, 직원 전달 안내).
+- `app/api/inquiries/route.js` GET 응답에 `role` 추가.
+- `app/admin/page.js` — `role==="superadmin"` 일 때만 헤더에 [+ 병원 등록] 버튼 노출.
+- `npm run build` 통과.
+
+**한계/주의**
+- 이미 등록된 이메일은 거부(중복 에러). 다중 병원 컨설턴트(한 계정 여러 병원) 대응은 추후 — 지금은 병원당 새 이메일.
+- 챗봇은 산부인과 전용이라 비산부인과는 폼에서 "챗봇 사용" 해제 권장(`chatbot_enabled=false`).
+- 신규 병원 settings 는 빈 골격만 생성 — 직원이 `/admin/settings` 에서 진료시간·FAQ 등 채워야 함.
 
 ---
 

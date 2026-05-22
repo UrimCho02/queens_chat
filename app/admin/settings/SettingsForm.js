@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import HeaderIcon from "../HeaderIcon";
 
 const DAY_OPTIONS = [
   { code: "sun", label: "일" },
@@ -375,7 +376,7 @@ export default function SettingsForm({ initial }) {
       {/* 헤더 */}
       <div className="bg-[#C9A96E] px-4 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-2">
-          <span className="text-lg">👑</span>
+          <HeaderIcon logoUrl={logoUrl} />
           <div>
             <div className="text-white text-sm font-medium">{name || "병원 설정"}</div>
             <div className="text-white/80 text-xs">병원 정보 수정</div>

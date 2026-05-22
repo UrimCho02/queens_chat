@@ -75,7 +75,7 @@ export async function GET(request) {
   );
   const { data: clinic } = await supabase
     .from("clinics")
-    .select("id, name, phone, chatbot_enabled")
+    .select("id, name, phone, chatbot_enabled, template, logo_url")
     .eq("slug", slug)
     .single();
 
@@ -115,6 +115,8 @@ export async function GET(request) {
     clinicName: clinic?.name || "",
     clinicPhone: clinic?.phone || "",
     chatbotEnabled: clinic?.chatbot_enabled !== false,
+    template: clinic?.template || "classic",
+    logoUrl: clinic?.logo_url || "",
     currentEvent,
     eventImageUrl,
     disclaimer,

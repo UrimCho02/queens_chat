@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentClinic } from "@/lib/auth/getCurrentClinic";
 
 export async function GET() {
   try {
     const supabase = await createClient();
     const today = new Date().toISOString().split("T")[0];
+
+    const { role, clinic } = await getCurrentClinic();
 
     const { data, error } = await supabase
       .from("inquiries")
@@ -22,10 +25,13 @@ export async function GET() {
       inquiries: data,
       todayCount: todayCount || 0,
       dailyLimit: parseInt(process.env.DAILY_LIMIT) || 20,
+      role: role || null,
+      clinicName: clinic?.name || null,
+      logoUrl: clinic?.logo_url || null,
     });
   } catch (error) {
     console.error("DB 조회 오류:", error);
-    return Response.json({ inquiries: [], todayCount: 0, dailyLimit: 20 });
+    return Response.json({ inquiries: [], todayCount: 0, dailyLimit: 20, role: null });
   }
 }
 

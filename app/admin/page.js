@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import PusherClient from "pusher-js";
 import { createClient } from "@/lib/supabase/client";
+import HeaderIcon from "./HeaderIcon";
 
 const CATEGORIES = ["전체", "예약/진료시간", "비용문의", "여성성형", "피부과", "증상문의", "수술회복", "기타"];
 
@@ -24,6 +25,9 @@ export default function AdminPage() {
   const [activeCategory, setActiveCategory] = useState("전체");
   const [todayCount, setTodayCount] = useState(0);
   const [dailyLimit, setDailyLimit] = useState(20);
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
+  const [clinicName, setClinicName] = useState("");
+  const [logoUrl, setLogoUrl] = useState(null);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -54,6 +58,9 @@ export default function AdminPage() {
         setTodayCount(data.todayCount || 0);
         setDailyLimit(data.dailyLimit || 20);
       }
+      setIsSuperadmin(data.role === "superadmin");
+      setClinicName(data.clinicName || "");
+      setLogoUrl(data.logoUrl || null);
     };
     loadInquiries();
   }, []);
@@ -122,9 +129,11 @@ export default function AdminPage() {
       {/* 헤더 */}
       <div className="bg-[#C9A96E] px-4 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-2">
-          <span className="text-lg">👑</span>
+          <HeaderIcon logoUrl={logoUrl} />
           <div>
-            <div className="text-white text-sm font-medium">더퀸즈여성의원</div>
+            <div className="text-white text-sm font-medium">
+              {clinicName || "병원"}
+            </div>
             <div className="text-white/80 text-xs">직원 관리 페이지</div>
           </div>
         </div>
@@ -165,6 +174,14 @@ export default function AdminPage() {
           >
             변경이력
           </button>
+          {isSuperadmin && (
+            <button
+              onClick={() => router.push("/admin/onboarding")}
+              className="bg-white text-[#C9A96E] text-xs px-3 py-1.5 rounded-full hover:bg-white/90 transition-colors cursor-pointer font-medium"
+            >
+              + 병원 등록
+            </button>
+          )}
           <button
             onClick={handleLogout}
             className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"

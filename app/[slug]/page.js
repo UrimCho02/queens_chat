@@ -66,7 +66,7 @@ export default async function ClinicHomepage({ params, searchParams }) {
   return (
     <>
       <Template data={data} />
-      <ChatWidget slug={slug} />
+      <ChatWidget slug={slug} template={templateKey} />
     </>
   );
 }

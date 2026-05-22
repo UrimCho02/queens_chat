@@ -28,5 +28,11 @@ export default async function LogsPage() {
     .order("created_at", { ascending: false })
     .limit(PAGE_SIZE);
 
-  return <LogsList initialLogs={logs || []} clinicName={clinic.name} />;
+  return (
+    <LogsList
+      initialLogs={logs || []}
+      clinicName={clinic.name}
+      logoUrl={clinic.logo_url}
+    />
+  );
 }
