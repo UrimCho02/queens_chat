@@ -28,6 +28,12 @@
 
 ## 2026-05-22
 
+### architecture.md 작성
+
+프로젝트 루트에 `architecture.md` 신규 작성 — 시스템 구조 문서. 시스템 구성(배포 토폴로지)·멀티테넌트 모델·인증/권한(역할·getCurrentClinic·proxy·Supabase 클라이언트 3종·RLS)·데이터 모델·요청 흐름 4종·시스템 프롬프트 조립·핵심 결정·확장 예정. CLAUDE.md(개발환경·컨벤션)와 WORK_LOG.md(이력)를 보완하는 "동작 원리" 레퍼런스.
+
+도메인 전략(서브도메인 + 커스텀 도메인)은 사용자 지시로 자동 메모리에 보관 — 추후 작업.
+
 ### master 머지 + 배포 (2차)
 
 `multitenant → master` fast-forward (`bd9c149 → 2981c3a`, 4커밋) → push → Vercel 자동 빌드. superadmin 운영 콘솔 + 버그픽스(병원 전환 버튼·설정 로그아웃·쿠키 초기화)가 production 반영. 마이그레이션·신규 env 없음.
