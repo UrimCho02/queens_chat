@@ -4,8 +4,9 @@ import { getCurrentClinic } from "@/lib/auth/getCurrentClinic";
 import FaqsManager from "./FaqsManager";
 
 export default async function FaqsPage() {
-  const { user, clinic } = await getCurrentClinic();
+  const { user, clinic, role } = await getCurrentClinic();
   if (!user) redirect("/login");
+  if (role === "superadmin" && !clinic) redirect("/admin/clinics");
 
   if (!clinic) {
     return (

@@ -40,6 +40,11 @@ export default function AdminPage() {
     const loadInquiries = async () => {
       const res = await fetch("/api/inquiries");
       const data = await res.json();
+      // superadmin 이 병원을 아직 안 골랐으면 운영 콘솔로.
+      if (data.role === "superadmin" && !data.clinicName) {
+        router.replace("/admin/clinics");
+        return;
+      }
       if (data.inquiries) {
         setInquiries(data.inquiries.map((i) => ({
           id: i.id,
@@ -176,10 +181,10 @@ export default function AdminPage() {
           </button>
           {isSuperadmin && (
             <button
-              onClick={() => router.push("/admin/onboarding")}
+              onClick={() => router.push("/admin/clinics")}
               className="bg-white text-[#C9A96E] text-xs px-3 py-1.5 rounded-full hover:bg-white/90 transition-colors cursor-pointer font-medium"
             >
-              + 병원 등록
+              병원 전환
             </button>
           )}
           <button

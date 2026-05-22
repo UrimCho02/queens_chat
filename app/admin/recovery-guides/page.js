@@ -4,8 +4,9 @@ import { getCurrentClinic } from "@/lib/auth/getCurrentClinic";
 import GuidesManager from "./GuidesManager";
 
 export default async function RecoveryGuidesPage() {
-  const { user, clinic } = await getCurrentClinic();
+  const { user, clinic, role } = await getCurrentClinic();
   if (!user) redirect("/login");
+  if (role === "superadmin" && !clinic) redirect("/admin/clinics");
 
   if (!clinic) {
     return (

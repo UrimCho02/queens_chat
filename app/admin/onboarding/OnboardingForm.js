@@ -146,10 +146,10 @@ export default function OnboardingForm() {
                 + 병원 추가 등록
               </button>
               <button
-                onClick={() => router.push("/admin")}
+                onClick={() => router.push("/admin/clinics")}
                 className="bg-gray-100 text-gray-600 rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-gray-200 cursor-pointer transition-colors"
               >
-                문의 목록으로
+                병원 목록으로
               </button>
             </div>
           </div>
@@ -326,10 +326,10 @@ function Header({ onLogout, router }) {
       </div>
       <div className="flex items-center gap-2">
         <button
-          onClick={() => router.push("/admin")}
+          onClick={() => router.push("/admin/clinics")}
           className="bg-white/25 text-white text-xs px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors cursor-pointer font-medium"
         >
-          ← 문의 목록
+          ← 병원 목록
         </button>
         <button
           onClick={onLogout}

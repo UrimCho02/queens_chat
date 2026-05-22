@@ -28,6 +28,26 @@
 
 ## 2026-05-22
 
+### superadmin 운영 콘솔 — 병원 목록 + 병원 전환
+
+**계기**: 사용자 지적 — superadmin 으로 로그인하면 `getCurrentClinic` 이 "가장 먼저 만든 병원(=더퀸즈)"을 반환해 운영자가 특정 병원에 매인 것처럼 보임. superadmin 은 SaaS 운영자인데 더퀸즈 직원처럼 취급됨. (추가로 `/api/inquiries` 가 clinic_id 필터 없이 조회 → superadmin 은 RLS 우회라 전 병원 문의가 섞여 보이던 버그도 발견.)
+
+**결정**: superadmin 의 "현재 관리 중인 병원"을 쿠키로 추적. 미선택이면 병원 목록 콘솔로.
+
+**한 것**
+- `lib/auth/getCurrentClinic.js` — superadmin 분기를 "첫 병원" → `ct_clinic` 쿠키 기반으로. 쿠키 없으면 `clinic=null`. 쿠키는 superadmin 검증 통과 시에만 읽으므로 일반 admin 권한 상승 불가.
+- `app/api/select-clinic/route.js` (신규) — superadmin 전용 POST. clinicId 받아 `ct_clinic` 쿠키 설정(30일). clinicId 없으면 쿠키 삭제.
+- `app/admin/clinics/{page,ClinicsConsole}.js` (신규) — superadmin 운영 콘솔. 전체 병원 목록 카드(템플릿·챗봇 on/off·비활성 배지), [관리](쿠키 설정 후 `/admin` 진입), [홈페이지]/[챗봇] 링크, [+ 병원 등록].
+- `app/api/inquiries/route.js` — `clinic` 없으면 빈 목록 반환. 있으면 `clinic_id` 명시 필터(superadmin RLS 우회 대비) — 선택 병원 문의만.
+- `app/admin/page.js` — superadmin 인데 병원 미선택이면 `/admin/clinics` 로 redirect. 헤더 [+ 병원 등록] → [병원 전환](`/admin/clinics`)로 교체.
+- 어드민 하위 페이지 5곳(settings/faqs/doctors/recovery-guides/logs) — `role==="superadmin" && !clinic` 이면 `/admin/clinics` redirect.
+- `app/admin/onboarding/OnboardingForm.js` — 헤더/완료 화면의 `/admin` 링크를 `/admin/clinics` 로 (superadmin 홈이 콘솔이므로).
+- `npm run build` 통과.
+
+**흐름**: superadmin 로그인 → `/admin` → 미선택이라 `/admin/clinics` 콘솔 → 병원 [관리] → 쿠키 설정 → 해당 병원 `/admin`. 전환은 헤더 [병원 전환]. 일반 admin 은 영향 없음(자기 병원 하나만 매핑).
+
+**남은 관련 작업**: Vercel 프로젝트명/도메인 정리(서브도메인 라우팅) — 사용자와 논의 중, 보류.
+
 ### master 머지 + 배포
 
 `multitenant → master` fast-forward (`a107f9b → bd9c149`, 22개 파일) → `git push origin master` → Vercel queens-chat 자동 빌드. 오늘 작업분(신규 병원 온보딩 + 챗봇 병원별 테마 + 👑 제거)이 production 반영. 마이그레이션·신규 env 없음 — 코드 배포만으로 충분.

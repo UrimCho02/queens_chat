@@ -6,8 +6,9 @@ import LogsList from "./LogsList";
 const PAGE_SIZE = 50;
 
 export default async function LogsPage() {
-  const { user, clinic } = await getCurrentClinic();
+  const { user, clinic, role } = await getCurrentClinic();
   if (!user) redirect("/login");
+  if (role === "superadmin" && !clinic) redirect("/admin/clinics");
 
   if (!clinic) {
     return (

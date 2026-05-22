@@ -4,8 +4,9 @@ import { getCurrentClinic } from "@/lib/auth/getCurrentClinic";
 import DoctorsManager from "./DoctorsManager";
 
 export default async function DoctorsPage() {
-  const { user, clinic } = await getCurrentClinic();
+  const { user, clinic, role } = await getCurrentClinic();
   if (!user) redirect("/login");
+  if (role === "superadmin" && !clinic) redirect("/admin/clinics");
 
   if (!clinic) {
     return (
