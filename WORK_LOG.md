@@ -28,6 +28,10 @@
 
 ## 2026-05-22
 
+### master 머지 + 배포 (2차)
+
+`multitenant → master` fast-forward (`bd9c149 → 2981c3a`, 4커밋) → push → Vercel 자동 빌드. superadmin 운영 콘솔 + 버그픽스(병원 전환 버튼·설정 로그아웃·쿠키 초기화)가 production 반영. 마이그레이션·신규 env 없음.
+
 ### superadmin 운영 콘솔 — 병원 목록 + 병원 전환
 
 **계기**: 사용자 지적 — superadmin 으로 로그인하면 `getCurrentClinic` 이 "가장 먼저 만든 병원(=더퀸즈)"을 반환해 운영자가 특정 병원에 매인 것처럼 보임. superadmin 은 SaaS 운영자인데 더퀸즈 직원처럼 취급됨. (추가로 `/api/inquiries` 가 clinic_id 필터 없이 조회 → superadmin 은 RLS 우회라 전 병원 문의가 섞여 보이던 버그도 발견.)
