@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PusherClient from "pusher-js";
 import { createClient } from "@/lib/supabase/client";
@@ -17,13 +17,33 @@ const CATEGORY_STYLE = {
   "기타": "bg-gray-100 text-gray-600",
 };
 
+// DB row → 화면용 객체
+function mapInquiry(i) {
+  return {
+    id: i.id,
+    sessionId: i.session_id,
+    userMessage: i.user_message,
+    aiDraft: i.ai_draft,
+    category: i.category,
+    isStaffRequired: i.is_staff_required,
+    status: i.status,
+    finalReply: i.final_reply,
+    timestamp: i.created_at,
+  };
+}
+
 export default function AdminPage() {
   const router = useRouter();
-  const [inquiries, setInquiries] = useState([]);
+  // pending = 처리할 문의(미처리 직원확인, 전량) / recent = 전체 문의(페이지 단위)
+  const [pending, setPending] = useState([]);
+  const [recent, setRecent] = useState([]);
+  const [recentHasMore, setRecentHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [editTexts, setEditTexts] = useState({});
   const [activeTab, setActiveTab] = useState("staff");
   const [activeCategory, setActiveCategory] = useState("전체");
   const [todayCount, setTodayCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [dailyLimit, setDailyLimit] = useState(20);
   const [isSuperadmin, setIsSuperadmin] = useState(false);
   const [clinicName, setClinicName] = useState("");
@@ -45,30 +65,25 @@ export default function AdminPage() {
         router.replace("/admin/clinics");
         return;
       }
-      if (data.inquiries) {
-        setInquiries(data.inquiries.map((i) => ({
-          id: i.id,
-          sessionId: i.session_id,
-          userMessage: i.user_message,
-          aiDraft: i.ai_draft,
-          category: i.category,
-          isStaffRequired: i.is_staff_required,
-          status: i.status,
-          finalReply: i.final_reply,
-          timestamp: i.created_at,
-        })));
-        const edits = {};
-        data.inquiries.forEach((i) => { edits[i.id] = i.ai_draft; });
-        setEditTexts(edits);
-        setTodayCount(data.todayCount || 0);
-        setDailyLimit(data.dailyLimit || 20);
-      }
+      const pendingMapped = (data.pending || []).map(mapInquiry);
+      const recentMapped = (data.recent || []).map(mapInquiry);
+      setPending(pendingMapped);
+      setRecent(recentMapped);
+      setRecentHasMore(!!data.recentHasMore);
+
+      const edits = {};
+      [...pendingMapped, ...recentMapped].forEach((i) => { edits[i.id] = i.aiDraft; });
+      setEditTexts(edits);
+
+      setTodayCount(data.todayCount || 0);
+      setTotalCount(data.totalCount || 0);
+      setDailyLimit(data.dailyLimit || 20);
       setIsSuperadmin(data.role === "superadmin");
       setClinicName(data.clinicName || "");
       setLogoUrl(data.logoUrl || null);
     };
     loadInquiries();
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     const pusher = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY, {
@@ -77,12 +92,35 @@ export default function AdminPage() {
     const channel = pusher.subscribe("admin-channel");
     channel.bind("new-inquiry", (data) => {
       const id = data.id || Date.now();
-      setInquiries((prev) => [{ ...data, id, status: "pending" }, ...prev]);
+      const item = { ...data, id, status: "pending" };
+      setRecent((prev) => [item, ...prev]);
+      // 직원 확인 필요 건이면 처리할 문의 목록에도 추가
+      if (item.isStaffRequired) setPending((prev) => [item, ...prev]);
       setEditTexts((prev) => ({ ...prev, [id]: data.aiDraft }));
       setTodayCount((prev) => prev + 1);
+      setTotalCount((prev) => prev + 1);
     });
     return () => pusher.disconnect();
   }, []);
+
+  // 전체 문의 탭 — 다음 페이지 추가 로드
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/inquiries?offset=${recent.length}`);
+      const data = await res.json();
+      const more = (data.recent || []).map(mapInquiry);
+      setRecent((prev) => [...prev, ...more]);
+      setRecentHasMore(!!data.recentHasMore);
+      setEditTexts((prev) => {
+        const next = { ...prev };
+        more.forEach((i) => { if (!(i.id in next)) next[i.id] = i.aiDraft; });
+        return next;
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const sendReply = async (inquiry, text) => {
     await fetch("/api/reply", {
@@ -90,9 +128,11 @@ export default function AdminPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId: inquiry.sessionId, reply: text, inquiryId: inquiry.id }),
     });
-    setInquiries((prev) =>
+    setRecent((prev) =>
       prev.map((i) => i.id === inquiry.id ? { ...i, status: "replied", finalReply: text } : i)
     );
+    // 처리 완료 → 처리할 문의 목록에서 제거 (탭이 비워짐)
+    setPending((prev) => prev.filter((i) => i.id !== inquiry.id));
   };
 
   const deleteInquiry = async (inquiry) => {
@@ -101,7 +141,9 @@ export default function AdminPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: inquiry.id }),
     });
-    setInquiries((prev) => prev.filter((i) => i.id !== inquiry.id));
+    setRecent((prev) => prev.filter((i) => i.id !== inquiry.id));
+    setPending((prev) => prev.filter((i) => i.id !== inquiry.id));
+    setTotalCount((prev) => Math.max(0, prev - 1));
   };
 
   const formatTime = (iso) => {
@@ -112,19 +154,18 @@ export default function AdminPage() {
     return `${month}/${day} ${time}`;
   };
 
-  const categoryFiltered = activeCategory === "전체"
-    ? inquiries
-    : inquiries.filter((i) => i.category === activeCategory);
+  // 탭별 소스 — staff: 처리할 문의(이미 미처리만) / all: 전체 문의(페이지)
+  const tabSource = activeTab === "staff" ? pending : recent;
+  const displayInquiries = activeCategory === "전체"
+    ? tabSource
+    : tabSource.filter((i) => i.category === activeCategory);
 
-  const staffInquiries = categoryFiltered.filter((i) => i.isStaffRequired);
-  const allInquiries = categoryFiltered;
-  const displayInquiries = activeTab === "staff" ? staffInquiries : allInquiries;
-  const pendingCount = inquiries.filter((i) => i.isStaffRequired && i.status === "pending").length;
+  const pendingCount = pending.length;
 
   const categoryCounts = CATEGORIES.reduce((acc, cat) => {
     acc[cat] = cat === "전체"
-      ? inquiries.length
-      : inquiries.filter((i) => i.category === cat).length;
+      ? tabSource.length
+      : tabSource.filter((i) => i.category === cat).length;
     return acc;
   }, {});
 
@@ -147,7 +188,7 @@ export default function AdminPage() {
             오늘 {todayCount}/{dailyLimit}건
           </div>
           <div className="bg-white/20 text-white text-xs px-2 py-1 rounded-full">
-            전체 {inquiries.length}건
+            전체 {totalCount}건
           </div>
           <button
             onClick={() => router.push("/admin/settings")}
@@ -226,7 +267,7 @@ export default function AdminPage() {
             activeTab === "staff" ? "border-[#C9A96E] text-[#C9A96E]" : "border-transparent text-gray-400"
           }`}
         >
-          직원 확인 필요
+          처리할 문의
           {pendingCount > 0 && (
             <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
               {pendingCount}
@@ -241,7 +282,7 @@ export default function AdminPage() {
         >
           전체 문의
           <span className="bg-gray-100 text-gray-500 text-xs rounded-full px-1.5 py-0.5">
-            {allInquiries.length}
+            {totalCount}
           </span>
         </button>
       </div>
@@ -253,7 +294,7 @@ export default function AdminPage() {
           <div className="text-center py-20 text-gray-400">
             <div className="text-4xl mb-3">{activeTab === "staff" ? "✅" : "💬"}</div>
             <div className="text-sm">
-              {activeTab === "staff" ? "확인이 필요한 문의가 없습니다"
+              {activeTab === "staff" ? "처리할 문의가 없습니다"
                 : activeCategory !== "전체" ? `${activeCategory} 문의가 없습니다`
                 : "아직 문의가 없습니다"}
             </div>
@@ -373,6 +414,19 @@ export default function AdminPage() {
             </div>
           ))}
         </div>
+
+        {/* 전체 문의 탭 — 더 보기 */}
+        {activeTab === "all" && recentHasMore && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="bg-white border border-gray-200 text-gray-600 rounded-xl px-6 py-2.5 text-sm font-medium hover:border-[#C9A96E] hover:text-[#C9A96E] disabled:opacity-50 cursor-pointer transition-colors"
+            >
+              {loadingMore ? "불러오는 중..." : "더 보기"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
