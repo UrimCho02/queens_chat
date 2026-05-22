@@ -2,6 +2,7 @@
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { getCurrentClinic } from "@/lib/auth/getCurrentClinic";
+import { clinicScoped } from "@/lib/db/clinicScoped";
 
 export async function PUT(request, { params }) {
   try {
@@ -26,13 +27,9 @@ export async function PUT(request, { params }) {
     }
 
     const service = createServiceClient();
+    const guides = clinicScoped(service, "clinic_recovery_guides", clinic.id);
 
-    const { data: before } = await service
-      .from("clinic_recovery_guides")
-      .select("*")
-      .eq("id", id)
-      .eq("clinic_id", clinic.id)
-      .maybeSingle();
+    const { data: before } = await guides.getById(id);
 
     if (!before) {
       return Response.json(
@@ -41,9 +38,8 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const { data: updated, error } = await service
-      .from("clinic_recovery_guides")
-      .update({
+    const { data: updated, error } = await guides
+      .updateById(id, {
         name,
         description: description || null,
         items,
@@ -52,7 +48,6 @@ export async function PUT(request, { params }) {
           : before.sort_order,
         is_active: body.is_active ?? before.is_active,
       })
-      .eq("id", id)
       .select()
       .single();
 
@@ -93,13 +88,9 @@ export async function DELETE(_request, { params }) {
     }
 
     const service = createServiceClient();
+    const guides = clinicScoped(service, "clinic_recovery_guides", clinic.id);
 
-    const { data: before } = await service
-      .from("clinic_recovery_guides")
-      .select("*")
-      .eq("id", id)
-      .eq("clinic_id", clinic.id)
-      .maybeSingle();
+    const { data: before } = await guides.getById(id);
 
     if (!before) {
       return Response.json(
@@ -108,10 +99,7 @@ export async function DELETE(_request, { params }) {
       );
     }
 
-    const { error } = await service
-      .from("clinic_recovery_guides")
-      .delete()
-      .eq("id", id);
+    const { error } = await guides.deleteById(id);
 
     if (error) throw error;
 

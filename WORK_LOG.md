@@ -28,6 +28,21 @@
 
 ## 2026-05-22
 
+### 멀티테넌트 안전성 — clinicScoped 헬퍼 (1차, [id] 라우트 2곳)
+
+**배경**: service_role 은 RLS 를 우회하므로 병원 격리가 코드에 의존. 감사 결과 활성 leak 은 없으나, `[id]` 라우트의 `.update()/.delete()` 가 `id` 만으로 실행돼 "소유 확인 SELECT 가 앞에 있어 안전"한 잠재 위험 + `clinic_id` 누락을 막는 구조적 장치 부재 확인.
+
+**결정**: 점진 적용. 위험도 높은 `[id]` 라우트 2곳부터.
+
+**한 것**
+- `lib/db/clinicScoped.js` (신규) — clinic 스코프 헬퍼. 현재 단계는 id 기반 메서드만: `getById` / `updateById` / `deleteById`. 각 메서드가 `clinic_id` 조건을 자동으로 끼움. INSERT/SELECT 헬퍼는 후속 단계로 미룸(불필요 코드 방지).
+- `app/api/clinic-faqs/[id]/route.js` PUT/DELETE — `getById`/`updateById`/`deleteById` 로 전환.
+- `app/api/recovery-guides/[id]/route.js` PUT/DELETE — 동일.
+- auth 흐름·응답 형식·`app/api` 구조 전부 유지. 정상 동작 시 영향받는 행·응답 동일(심층 방어 — 잠재 위험만 제거).
+- `npm run build` 통과.
+
+**남음**: clinic-faqs/recovery-guides POST, chat 등으로 점진 확대 (insert/select 헬퍼 추가하며).
+
 ### architecture.md 작성 → 2부 구성으로 개편
 
 프로젝트 루트에 `architecture.md` 작성. 사용자(비개발자 운영자) 요청으로 **A부(운영자용 프로젝트 지도) + B부(기술 레퍼런스)** 2부 구성으로 개편:

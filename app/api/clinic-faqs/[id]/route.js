@@ -2,6 +2,7 @@
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { getCurrentClinic } from "@/lib/auth/getCurrentClinic";
+import { clinicScoped } from "@/lib/db/clinicScoped";
 
 export async function PUT(request, { params }) {
   try {
@@ -25,13 +26,9 @@ export async function PUT(request, { params }) {
     }
 
     const service = createServiceClient();
+    const faqs = clinicScoped(service, "clinic_faqs", clinic.id);
 
-    const { data: before } = await service
-      .from("clinic_faqs")
-      .select("*")
-      .eq("id", id)
-      .eq("clinic_id", clinic.id)
-      .maybeSingle();
+    const { data: before } = await faqs.getById(id);
 
     if (!before) {
       return Response.json(
@@ -40,15 +37,13 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const { data: updated, error } = await service
-      .from("clinic_faqs")
-      .update({
+    const { data: updated, error } = await faqs
+      .updateById(id, {
         question,
         answer,
         sort_order: Number.isFinite(body.sort_order) ? body.sort_order : before.sort_order,
         is_active: body.is_active ?? before.is_active,
       })
-      .eq("id", id)
       .select()
       .single();
 
@@ -89,13 +84,9 @@ export async function DELETE(_request, { params }) {
     }
 
     const service = createServiceClient();
+    const faqs = clinicScoped(service, "clinic_faqs", clinic.id);
 
-    const { data: before } = await service
-      .from("clinic_faqs")
-      .select("*")
-      .eq("id", id)
-      .eq("clinic_id", clinic.id)
-      .maybeSingle();
+    const { data: before } = await faqs.getById(id);
 
     if (!before) {
       return Response.json(
@@ -104,10 +95,7 @@ export async function DELETE(_request, { params }) {
       );
     }
 
-    const { error } = await service
-      .from("clinic_faqs")
-      .delete()
-      .eq("id", id);
+    const { error } = await faqs.deleteById(id);
 
     if (error) throw error;
 
