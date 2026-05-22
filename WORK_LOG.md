@@ -49,7 +49,7 @@
 **버그 픽스 (사용자 테스트 피드백)**
 - 병원 관리페이지에서 콘솔로 돌아갈 길 없음 → 어드민 하위 페이지 5곳(settings/faqs/doctors/recovery-guides/logs) 헤더에 [병원 전환] 버튼 추가(superadmin만). 각 매니저에 `isSuperadmin` prop 전달.
 - `/admin/settings` 헤더에 로그아웃 버튼이 아예 없던 기존 버그 → `handleLogout` + 버튼 추가.
-- 로그아웃 후 재로그인 시 이전 병원으로 바로 진입 → `ct_clinic` 쿠키가 로그아웃에도 안 지워지던 문제. `/login` 진입 시 쿠키 초기화(useEffect). 클라이언트가 지울 수 있도록 쿠키 `httpOnly` 해제(병원 id라 민감정보 아님, getCurrentClinic이 superadmin 검증 후에만 읽음).
+- 로그아웃 후 재로그인 시 이전 병원으로 바로 진입 → `ct_clinic` 쿠키가 로그인 세션과 별개라 안 지워지던 문제. 1차로 `/login` 에서 `document.cookie` 로 지우려 했으나 쿠키가 httpOnly 라 클라이언트 삭제 불가 → **서버 삭제로 수정**: `/api/select-clinic` 에 `DELETE` 핸들러(인증 불필요, 쿠키만 삭제) 추가, 로그인 성공 시 `handleLogin` 이 `await fetch(DELETE)` 후 redirect. 쿠키는 httpOnly 유지.
 
 **남은 관련 작업**: Vercel 프로젝트명/도메인 정리(서브도메인 라우팅) — 사용자와 논의 중, 보류.
 

@@ -44,10 +44,8 @@ export async function POST(request) {
       );
     }
 
-    // httpOnly 아님 — 로그아웃 시 클라이언트(/login)에서 초기화할 수 있어야 함.
-    // 민감정보 아님(병원 id). getCurrentClinic 이 superadmin 검증 후에만 읽음.
     cookieStore.set(SELECTED_CLINIC_COOKIE, clinic.id, {
-      httpOnly: false,
+      httpOnly: true,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 30, // 30일
@@ -61,4 +59,12 @@ export async function POST(request) {
       { status: 500 }
     );
   }
+}
+
+// 병원 선택 해제 — 로그인 화면에서 호출해 이전 선택을 초기화한다.
+// 쿠키만 삭제하므로 인증 불필요(무해). httpOnly 쿠키라 서버에서 지워야 함.
+export async function DELETE() {
+  const cookieStore = await cookies();
+  cookieStore.delete(SELECTED_CLINIC_COOKIE);
+  return Response.json({ ok: true });
 }

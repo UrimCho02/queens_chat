@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -9,12 +9,6 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    // /login 도달 = 로그아웃했거나 새로 로그인하는 상황.
-    // superadmin 의 이전 병원 선택(ct_clinic)을 초기화 → 다음 로그인 시 병원 목록부터.
-    document.cookie = "ct_clinic=; Max-Age=0; path=/";
-  }, []);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -36,6 +30,10 @@ export default function Login() {
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
       return;
     }
+
+    // superadmin 의 이전 병원 선택(ct_clinic 쿠키)을 초기화 — 로그인하면
+    // 항상 병원 목록부터. await 로 redirect 전에 쿠키 삭제 완료를 보장.
+    await fetch("/api/select-clinic", { method: "DELETE" });
 
     router.push("/admin");
     router.refresh();
