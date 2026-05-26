@@ -2,6 +2,7 @@
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { getCurrentClinic } from "@/lib/auth/getCurrentClinic";
+import { clinicScoped } from "@/lib/db/clinicScoped";
 
 export async function POST(request) {
   try {
@@ -25,10 +26,10 @@ export async function POST(request) {
     }
 
     const service = createServiceClient();
-    const { data: created, error } = await service
-      .from("clinic_recovery_guides")
+    const guides = clinicScoped(service, "clinic_recovery_guides", clinic.id);
+
+    const { data: created, error } = await guides
       .insert({
-        clinic_id: clinic.id,
         name,
         description: description || null,
         items,

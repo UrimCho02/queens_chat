@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import Pusher from "pusher";
 import { createServiceClient } from "@/lib/supabase/service";
 import { buildPrompt } from "@/lib/prompts/buildPrompt";
+import { clinicScoped } from "@/lib/db/clinicScoped";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -161,6 +162,9 @@ export async function POST(request) {
       );
     }
 
+    // 이후 inquiries 조회/저장은 모두 이 헬퍼로 — clinic_id 누락/오기입 구조적 차단.
+    const inquiries = clinicScoped(supabase, "inquiries", clinic.id);
+
     // 데모 가상 병원(slug 'demo-' 접두)은 영업 시연용 — 실 직원이 없으므로
     // 문의를 inquiries 에 저장하지 않고 Pusher 알림도 보내지 않음.
     // (실제 병원 어드민 페이지/실시간 알림 오염 방지. 챗봇 AI 응답은 정상 작동.)
@@ -182,17 +186,14 @@ export async function POST(request) {
 
       if (!isDemo) {
         const maskedMessage = maskPersonalInfo(message);
-        await supabase
-          .from("inquiries")
-          .insert({
-            clinic_id: clinic.id,
-            session_id: sessionId,
-            user_message: maskedMessage,
-            ai_draft: blockMessage,
-            category: "기타",
-            is_staff_required: false,
-            status: "blocked",
-          });
+        await inquiries.insert({
+          session_id: sessionId,
+          user_message: maskedMessage,
+          ai_draft: blockMessage,
+          category: "기타",
+          is_staff_required: false,
+          status: "blocked",
+        });
       }
 
       return Response.json({ reply: blockMessage, isStaffRequired: false });
@@ -210,10 +211,8 @@ export async function POST(request) {
 
     // 5. 일일 문의 한도 체크 (병원별 카운트)
     const today = new Date().toISOString().split("T")[0];
-    const { count: dailyCount, error: countError } = await supabase
-      .from("inquiries")
+    const { count: dailyCount, error: countError } = await inquiries
       .select("*", { count: "exact", head: true })
-      .eq("clinic_id", clinic.id)
       .gte("created_at", `${today}T00:00:00+09:00`)
       .lte("created_at", `${today}T23:59:59+09:00`);
 
@@ -246,10 +245,8 @@ export async function POST(request) {
 
     // 8~9. Supabase 저장 + Pusher 실시간 전송 — 데모 병원은 건너뜀.
     if (!isDemo) {
-      const { data: inquiry, error: dbError } = await supabase
-        .from("inquiries")
+      const { data: inquiry, error: dbError } = await inquiries
         .insert({
-          clinic_id: clinic.id,
           session_id: sessionId,
           user_message: message,
           ai_draft: cleanReply,

@@ -28,6 +28,26 @@
 
 ## 2026-05-26
 
+### 멀티테넌트 안전성 — clinicScoped 헬퍼 2차 (POST + chat 라우트)
+
+**배경**: 1차(05-22)에 `[id]` 라우트 2곳만 전환한 헬퍼를 INSERT/SELECT까지 확대. POST 라우트의 `clinic_id` 직접 박기 패턴과 chat 라우트의 inquiries INSERT/일일카운트 SELECT 가 여전히 "수동" 상태였음 — 향후 새 라우트 추가 시 누락 위험.
+
+**한 것**
+- `lib/db/clinicScoped.js` — 메서드 2개 추가:
+  - `insert(data)` — clinic_id 자동 주입(캘러 페이로드의 다른 clinic_id 값을 덮어쓴다 = cross-tenant write 차단). 배열 인서트도 지원.
+  - `select(columns, options)` — `service.from(t).select(cols, opts).eq("clinic_id", ...)` 까지 미리 적용된 쿼리빌더. `.eq/.gte/.lte/.order/.limit/.count/.head` 그대로 체이닝 가능.
+  - 상단 주석에서 "점진 적용 중" 제거(이제 mutation 전 범위 커버).
+- `app/api/clinic-faqs/route.js` POST — `clinicScoped(service, "clinic_faqs", clinic.id).insert(...)` 로 전환.
+- `app/api/recovery-guides/route.js` POST — `clinicScoped(service, "clinic_recovery_guides", clinic.id).insert(...)` 로 전환.
+- `app/api/chat/route.js` — clinic 조회 직후 `inquiries` 헬퍼 1회 생성하여 3곳 동시 적용:
+  - 개인정보 차단 시 inquiries INSERT
+  - 일일 한도 SELECT (count/head)
+  - 일반 응답 시 inquiries INSERT(.select().single() 체이닝 유지)
+- `clinic_change_logs` INSERT 는 그대로 raw — write-only 감사 로그라 bug 시 손해 작고, 헬퍼 인스턴스 추가만 잔뜩 늘어남.
+- `npm run build` 통과.
+
+**원칙 유지**: repository/DI/제네릭/microservice 같은 큰 abstraction 금지. 헬퍼는 단일 파일, 5개 메서드, 약 60줄. audit logging/prompt 비용 최적화는 고객 늘어난 뒤 검토.
+
 ### 어드민 클릭 가능 표시 — 누락된 cursor-pointer 추가
 
 **계기**: 사용자 피드백 — 처리할 문의/전체 문의 탭 위에서 손가락 커서가 안 나옴. Tailwind preflight이 `button { cursor: pointer }`를 풀어버려서 명시 필요. 어드민 전체 button을 같이 점검.
