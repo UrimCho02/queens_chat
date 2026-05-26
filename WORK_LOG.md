@@ -28,6 +28,22 @@
 
 ## 2026-05-26
 
+### 챗봇 링크 미리보기 — 병원별 동적 og:title
+
+**계기**: 사용자가 `demo.clinictalk.kr` 을 카톡에 붙여 보니 link preview 가 "더퀸즈여성의원 AI 상담"으로 떴음. 데모/타 병원 URL 공유 시 잘못된 브랜드가 노출되는 문제. `app/layout.js` 의 static `metadata.title` 이 모든 경로에 그대로 적용되던 게 원인.
+
+**한 것**
+- `lib/clinicSlug.js` 신규 — `HOST_SLUG_MAP` 과 `resolveSlugFromRequest(searchParams, host)` 를 클라/서버 공용으로 분리. 그동안 `app/page.js` 인라인이었음.
+- `app/page.js` → `app/ChatClient.js` 로 이름 변경(클라이언트 컴포넌트). `HOST_SLUG_MAP` 인라인 → import 로 교체. 기능 변화 없음.
+- 새 `app/page.js` (서버 컴포넌트) — `generateMetadata({ searchParams })` 에서 `headers()` 로 host 읽고 → slug 결정 → `clinics.name` 1회 조회 → `${병원명} AI 상담` 타이틀 + `openGraph` 동봉. 실패 시 "AI 상담 채널" 중립 fallback. UI 는 `<ChatClient />` 위임.
+- `app/layout.js` — static metadata 를 `ClinicTalk` / `병원 AI 상담 채널` 로 중립화. /admin /login 등 자체 메타데이터 없는 경로용 fallback.
+- 빌드 결과 `/` 가 `ƒ`(dynamic) 으로 표시 — generateMetadata 가 `headers()` 사용해서 정적 prerender 불가, 의도된 동작.
+- `npm run build` 통과.
+
+**효과**: KakaoTalk/Slack/Twitter 등 크롤러가 `demo.clinictalk.kr` HEAD 요청 시 og:title = "OO여성의원 AI 상담", 더퀸즈 URL 요청 시 = "더퀸즈여성의원 AI 상담". 페이지 진입 시 DB 1회 조회 추가, 비용 무시 가능.
+
+**향후 확장**: og:image 도입 시 병원 로고/대표 이미지를 og:image 로 노출 가능 — 지금은 텍스트 only.
+
 ### 챗봇 모바일/인앱 브라우저 호환성 — 4건 수정
 
 **계기**: KakaoTalk 인앱 브라우저(Android WebView / iOS WKWebView)에서 챗봇 정상 작동 + 360~390px 폭 UI 점검 요청. 정적 코드 감사 결과 실제 영향 큰 4건 발견.

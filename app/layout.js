@@ -1,8 +1,10 @@
 import "./globals.css";
 
+// 중립 fallback — 챗봇(/) 페이지는 자체 generateMetadata 로 병원명 동적 적용,
+// /admin /login 등 자체 메타데이터 없는 경로는 여기를 사용.
 export const metadata = {
-  title: "더퀸즈여성의원 AI 상담",
-  description: "더퀸즈여성의원 AI 상담 채널",
+  title: "ClinicTalk",
+  description: "병원 AI 상담 채널",
 };
 
 export const viewport = {
