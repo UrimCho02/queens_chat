@@ -14,6 +14,13 @@ const CHAT_THEMES = {
   soft: { primary: "#10B981", bg: "#ECFDF5" }, // 민트
 };
 
+// 호스트네임 → clinic slug 매핑. 데모 전용 진입점.
+// 쿼리 파라미터(?clinic=...)가 우선이고, 없을 때만 이 맵을 참조한다.
+// 향후 병원별 서브도메인(thequeens.clinictalk.kr 등) 도입 시 확장.
+const HOST_SLUG_MAP = {
+  "demo.clinictalk.kr": "demo-obgyn",
+};
+
 function ChatIcon({ className }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -102,8 +109,12 @@ export default function Home() {
   }, [loading]);
 
   useEffect(() => {
-    // 임베드된 홈페이지 위젯이 ?clinic=<slug> 로 병원을 지정. 없으면 더퀸즈.
-    const slug = new URLSearchParams(window.location.search).get("clinic") || "";
+    // 임베드된 홈페이지 위젯이 ?clinic=<slug> 로 병원을 지정. 쿼리 우선,
+    // 없으면 호스트네임 매핑(데모 서브도메인 등), 그것도 없으면 서버 fallback(더퀸즈).
+    const slug =
+      new URLSearchParams(window.location.search).get("clinic") ||
+      HOST_SLUG_MAP[window.location.hostname] ||
+      "";
     setClinicSlug(slug);
 
     fetch(`/api/chat${slug ? `?clinic=${encodeURIComponent(slug)}` : ""}`)

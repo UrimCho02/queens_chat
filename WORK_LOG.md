@@ -28,6 +28,27 @@
 
 ## 2026-05-26
 
+### 데모 서브도메인 — demo.clinictalk.kr → demo-obgyn 챗봇
+
+**계기**: 사용자 질문 — 데모 챗봇 별도 URL이 있는지. 현재는 `queens-chat.vercel.app/?clinic=demo-obgyn` 식 쿼리 파라미터 진입만 있어서, 영업/시연용 깔끔한 URL 부재.
+
+**결정** (사용자 선택)
+- `demo.clinictalk.kr` → 풀스크린 챗봇(`/?clinic=demo-obgyn` 와 동등). 홈페이지 위젯형 아님.
+- 타겟은 `demo-obgyn` (3종 데모 중 챗봇 실제 작동하는 유일한 것).
+
+**한 것** (코드 변경 최소화 — `next.config.mjs` rewrite/redirect 안 씀)
+- `app/page.js`:
+  - `HOST_SLUG_MAP = { "demo.clinictalk.kr": "demo-obgyn" }` 상수 추가.
+  - useEffect 슬러그 결정 우선순위: `?clinic=` 쿼리 → 호스트 매핑 → 빈 값(서버 fallback=더퀸즈).
+- 다른 파일 변경 없음. rewrite 안 쓰는 이유: rewrite 시 브라우저 URL은 `demo.clinictalk.kr/` 유지되는데 `app/page.js`가 `window.location.search`로 슬러그 읽으므로 쿼리 못 읽음. 클라이언트가 호스트네임 자체를 보는 게 가장 단순.
+- `npm run build` 통과.
+
+**외부 설정 필요 (코드 만으로는 미동작)**
+1. **DNS** — `clinictalk.kr` DNS에 CNAME `demo` → `cname.vercel-dns.com` 추가.
+2. **Vercel** — `queens-chat` 프로젝트 Domains 에 `demo.clinictalk.kr` 등록(자동 SSL). `clinictalk.kr` 자체는 다른 프로젝트(랜딩)에 붙어 있지만 서브도메인은 별도 프로젝트 OK.
+
+**확장성 노트**: HOST_SLUG_MAP 은 한 줄이라 향후 병원별 서브도메인(`thequeens.clinictalk.kr` 등) 도입 시 항목 추가만 하면 됨. 와일드카드(`*.clinictalk.kr`) 일반화는 매핑 규모 커지면 그때 검토 — 현재 [[domain_strategy]] 메모리의 후속 작업.
+
 ### 멀티테넌트 안전성 — clinicScoped 헬퍼 2차 (POST + chat 라우트)
 
 **배경**: 1차(05-22)에 `[id]` 라우트 2곳만 전환한 헬퍼를 INSERT/SELECT까지 확대. POST 라우트의 `clinic_id` 직접 박기 패턴과 chat 라우트의 inquiries INSERT/일일카운트 SELECT 가 여전히 "수동" 상태였음 — 향후 새 라우트 추가 시 누락 위험.
