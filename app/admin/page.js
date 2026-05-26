@@ -243,7 +243,7 @@ export default function AdminPage() {
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
               activeCategory === cat
                 ? "bg-[#C9A96E] text-white"
                 : "bg-gray-100 text-gray-500 hover:bg-gray-200"
@@ -263,8 +263,8 @@ export default function AdminPage() {
       <div className="flex border-b border-gray-200 bg-white sticky top-[93px] z-10">
         <button
           onClick={() => setActiveTab("staff")}
-          className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
-            activeTab === "staff" ? "border-[#C9A96E] text-[#C9A96E]" : "border-transparent text-gray-400"
+          className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors cursor-pointer ${
+            activeTab === "staff" ? "border-[#C9A96E] text-[#C9A96E]" : "border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
           }`}
         >
           처리할 문의
@@ -276,8 +276,8 @@ export default function AdminPage() {
         </button>
         <button
           onClick={() => setActiveTab("all")}
-          className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
-            activeTab === "all" ? "border-[#C9A96E] text-[#C9A96E]" : "border-transparent text-gray-400"
+          className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors cursor-pointer ${
+            activeTab === "all" ? "border-[#C9A96E] text-[#C9A96E]" : "border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
           }`}
         >
           전체 문의
@@ -338,7 +338,7 @@ export default function AdminPage() {
                   <span className="text-xs text-gray-400">{formatTime(inquiry.timestamp)}</span>
                   <button
                     onClick={() => deleteInquiry(inquiry)}
-                    className="text-gray-300 hover:text-red-400 transition-colors ml-1"
+                    className="text-gray-300 hover:text-red-400 transition-colors ml-1 cursor-pointer"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
@@ -396,7 +396,7 @@ export default function AdminPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => sendReply(inquiry, editTexts[inquiry.id])}
-                      className="flex-1 bg-[#C9A96E] text-white rounded-xl py-2.5 text-sm font-medium active:bg-[#b8965d]"
+                      className="flex-1 bg-[#C9A96E] text-white rounded-xl py-2.5 text-sm font-medium hover:bg-[#b8965d] active:bg-[#b8965d] cursor-pointer transition-colors"
                     >
                       발송
                     </button>
@@ -404,7 +404,7 @@ export default function AdminPage() {
                       onClick={() =>
                         setEditTexts((prev) => ({ ...prev, [inquiry.id]: inquiry.aiDraft }))
                       }
-                      className="bg-gray-100 text-gray-600 rounded-xl px-4 py-2.5 text-sm"
+                      className="bg-gray-100 text-gray-600 rounded-xl px-4 py-2.5 text-sm hover:bg-gray-200 cursor-pointer transition-colors"
                     >
                       초안 복원
                     </button>

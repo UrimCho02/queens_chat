@@ -28,6 +28,18 @@
 
 ## 2026-05-26
 
+### 어드민 클릭 가능 표시 — 누락된 cursor-pointer 추가
+
+**계기**: 사용자 피드백 — 처리할 문의/전체 문의 탭 위에서 손가락 커서가 안 나옴. Tailwind preflight이 `button { cursor: pointer }`를 풀어버려서 명시 필요. 어드민 전체 button을 같이 점검.
+
+**한 것** (`app/admin/page.js` 4곳 추가)
+- 처리할 문의·전체 문의 탭 2개 — `cursor-pointer` + hover 힌트(`hover:text-gray-600 hover:bg-gray-50`).
+- 카테고리 필터 버튼들 — `cursor-pointer` 누락.
+- 문의 카드 삭제 휴지통 — `cursor-pointer` 누락.
+- 발송 / 초안 복원 버튼 — `cursor-pointer` 누락(+ hover 색).
+- 나머지 6개 어드민 파일(SettingsForm/FaqsManager/DoctorsManager/GuidesManager/LogsList/OnboardingForm/ClinicsConsole)은 이미 `cursor-pointer` 들어가 있음. 헤더 네비/저장/삭제/토글 라벨 등 점검 완료.
+- `npm run build` 통과.
+
 ### master 머지 + 배포 (3차)
 
 `multitenant → master` fast-forward (`2bafc62 → 58f574e`, 2커밋 / 6파일) → `git push origin master` → Vercel queens-chat 자동 빌드. 05-22 후반 작업분(어드민 문의 목록 처리 큐 분리·페이지네이션 + `lib/db/clinicScoped.js` 헬퍼 [id] 라우트 2곳 적용)이 production 반영. 마이그레이션·신규 env 없음.
