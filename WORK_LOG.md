@@ -26,6 +26,14 @@
 
 ---
 
+## 2026-05-26
+
+### master 머지 + 배포 (3차)
+
+`multitenant → master` fast-forward (`2bafc62 → 58f574e`, 2커밋 / 6파일) → `git push origin master` → Vercel queens-chat 자동 빌드. 05-22 후반 작업분(어드민 문의 목록 처리 큐 분리·페이지네이션 + `lib/db/clinicScoped.js` 헬퍼 [id] 라우트 2곳 적용)이 production 반영. 마이그레이션·신규 env 없음.
+
+---
+
 ## 2026-05-22
 
 ### 어드민 문의 목록 개선 — 처리 큐 분리 + 페이지네이션
