@@ -28,6 +28,22 @@
 
 ## 2026-05-26
 
+### 챗봇 모바일/인앱 브라우저 호환성 — 4건 수정
+
+**계기**: KakaoTalk 인앱 브라우저(Android WebView / iOS WKWebView)에서 챗봇 정상 작동 + 360~390px 폭 UI 점검 요청. 정적 코드 감사 결과 실제 영향 큰 4건 발견.
+
+**한 것**
+- **iOS 입력 zoom 차단** (`app/page.js`): input 폰트 14px(`text-sm`) → 인라인 `fontSize: 16`. iOS Safari/WebView 는 16px 미만 input focus 시 페이지를 강제 zoom-in 함.
+- **safe-area 적용** (`app/layout.js` + `app/page.js`): `viewport-fit=cover` 활성화 후 헤더에 `padding-top: env(safe-area-inset-top)`, 입력바에 `padding-bottom: env(safe-area-inset-bottom)`. iPhone 노치/홈인디케이터 영역 회피.
+- **iOS 자동 보정 차단** (`app/page.js`): input 에 `autoComplete/autoCorrect/autoCapitalize = "off"`. 한글 채팅에서 자동 띄어쓰기 보정 방지.
+- **Pull-to-refresh 차단** (`app/globals.css` + `app/page.js`): `html/body`에 `overscroll-behavior-y: none`, 메시지 영역에 `overscroll-contain`. 위로 끌어 새로고침 → 채팅 맥락 잃는 사고 방지.
+
+**손 안 댄 것**
+- `h-screen + max-h-[100dvh]` 조합 — 키보드 올라올 때 컨테이너 자동 축소 동작 OK.
+- 360px 폭 — 모든 너비 비례 단위, 이벤트 이미지도 부모 78% 버블에 갇혀 자동 축소. 깨짐 없음.
+
+**검증**: `npm run build` 통과. 실기기 테스트(KakaoTalk 인앱 브라우저)는 사용자가 배포 후 확인.
+
 ### 데모 서브도메인 — demo.clinictalk.kr → demo-obgyn 챗봇
 
 **계기**: 사용자 질문 — 데모 챗봇 별도 URL이 있는지. 현재는 `queens-chat.vercel.app/?clinic=demo-obgyn` 식 쿼리 파라미터 진입만 있어서, 영업/시연용 깔끔한 URL 부재.

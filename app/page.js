@@ -221,8 +221,12 @@ export default function Home() {
 
       {/* 헤더 */}
       <div
-        className="px-4 py-3 flex items-center gap-3 flex-shrink-0"
-        style={{ backgroundColor: theme.primary }}
+        className="px-4 pb-3 flex items-center gap-3 flex-shrink-0"
+        style={{
+          backgroundColor: theme.primary,
+          // iOS 노치 영역 회피 — viewport-fit=cover 와 짝.
+          paddingTop: "calc(0.75rem + env(safe-area-inset-top))",
+        }}
       >
         {chatInfo?.logoUrl ? (
           <img
@@ -274,7 +278,7 @@ export default function Home() {
       )}
 
       {/* 메시지 영역 */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 overscroll-contain">
         {messages.map((msg) => {
           if (msg.isMenu) {
             return (
@@ -354,7 +358,13 @@ export default function Home() {
       </div>
 
       {/* 입력창 */}
-      <div className="px-3 py-3 flex gap-2 items-center bg-white flex-shrink-0">
+      <div
+        className="px-3 pt-3 flex gap-2 items-center bg-white flex-shrink-0"
+        style={{
+          // iPhone 홈인디케이터 회피 — viewport-fit=cover 와 짝.
+          paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))",
+        }}
+      >
         <input
           ref={inputRef}
           type="text"
@@ -367,7 +377,14 @@ export default function Home() {
               : "데모 미리보기 — 입력이 비활성화되어 있어요"
           }
           disabled={loading || !chatbotEnabled}
-          className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 text-sm outline-none focus:border-gray-400 disabled:opacity-50"
+          // iOS 한글 채팅 입력에서 의도치 않은 자동 보정 차단.
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          // iOS Safari/WebView 는 font-size < 16px input 에 focus 시 페이지를
+          // 강제 zoom-in 한다. 인라인 16px 로 차단.
+          style={{ fontSize: 16 }}
+          className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 outline-none focus:border-gray-400 disabled:opacity-50"
         />
         <button
           onClick={() => sendMessage()}
