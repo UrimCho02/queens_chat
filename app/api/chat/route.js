@@ -170,8 +170,8 @@ export async function POST(request) {
     // (실제 병원 어드민 페이지/실시간 알림 오염 방지. 챗봇 AI 응답은 정상 작동.)
     const isDemo = slug.startsWith("demo-");
 
-    // 챗봇 비활성 병원(비산부인과 데모 등) — 채팅 대신 안내문만 반환.
-    // 가드레일(safety.js)이 산부인과 전용이라 비산부인과는 챗봇을 끔.
+    // 챗봇 비활성 병원 — 채팅 대신 안내문만 반환.
+    // (safety/ 가 진료과별로 분리돼 있어 새 진료과는 모듈 추가 시까지 비활성.)
     if (clinic.chatbot_enabled === false) {
       return Response.json({
         reply:

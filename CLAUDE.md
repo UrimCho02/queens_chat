@@ -45,7 +45,12 @@ obgyn-demo/
 │   ├── supabase/{client,server,service}.js  # 역할별 클라이언트 (아래 "주요 결정" 참고)
 │   ├── auth/getCurrentClinic.js    # 로그인 사용자 → user/clinic/role 결정
 │   └── prompts/
-│       ├── safety.js               # 의료법 가드레일 (코드 단 고정)
+│       ├── safety/                 # 의료법 가드레일 (진료과별 분리, 코드 단 고정)
+│       │   ├── index.js            # safetyRules 진입점
+│       │   ├── common.js           # 진료과 무관 룰
+│       │   ├── obgyn.js            # 산부인과
+│       │   ├── internal.js         # 내과
+│       │   └── pediatric.js        # 소아청소년과
 │       └── buildPrompt.js          # 병원별 DB 조회 → 시스템 프롬프트 조립
 ├── supabase/migrations/            # DDL 파일들 (Studio SQL Editor에 수동 적용)
 ├── clinictalk-landing/             # 서브모듈 (별도 리포)
@@ -61,7 +66,7 @@ obgyn-demo/
 | `app/page.js` | 챗봇 UI. Pusher로 직원 답변 수신. `/api/chat`에 메시지 POST. |
 | `app/admin/page.js` | 문의 목록 (직원 확인 필요 / 전체 탭). 카테고리 필터. AI 초안 편집 후 발송. |
 | `app/api/chat/route.js` | **핵심 비즈니스 로직.** 개인정보 마스킹 → 일일 한도 체크 → `buildPrompt`로 시스템 프롬프트 → Claude 호출 → STAFF_REQUIRED/CATEGORY 태그 파싱 → `inquiries` INSERT → 직원 확인 필요 시 Pusher로 어드민 채널 푸시. |
-| `lib/prompts/safety.js` | 의료법 가드레일. `clinicName`/`bookingUrl` 인자로 받음. **어드민이 편집 불가.** |
+| `lib/prompts/safety/` | 의료법 가드레일. `safetyRules({ specialty, clinicName, bookingUrl, tone })`. `common` + specialty별 모듈(`obgyn`/`internal`/`pediatric`) 합성. **어드민이 편집 불가.** |
 | `lib/prompts/buildPrompt.js` | `clinics` + `clinic_settings` + `clinic_faqs` (`is_active=true`) 3쿼리 → 시스템 프롬프트 조립. FAQ 섹션 순서는 `[답변 규칙]` **뒤** (앞에 두면 모델이 FAQ 패턴 따라 안전 룰 무시함). |
 | `lib/auth/getCurrentClinic.js` | `superadmins` 우선 조회 → 본인이면 첫 clinic. 아니면 `clinic_users` 매핑된 clinic. service_role로 조회해서 RLS 우회. |
 | `lib/supabase/client.js` | 브라우저용 anon. signInWithPassword / signOut 정도. |
@@ -119,7 +124,7 @@ npm run lint    # ESLint
 - **역할 모델**: `admin` (`clinic_users` 매핑) + `superadmin` (별도 `superadmins` 테이블). superadmin = SaaS 운영자 (우림님 본인).
 - **챗봇 API → service_role**: anon 권한을 inquiries INSERT에 열어주는 보안 risk 회피.
 - **RLS는 모든 코드 준비 후 일괄 활성화**: 5E 단계. 중간에 켜면 라이브 앱 깨짐.
-- **의료법 안전 가드레일 = 코드 단 고정** (`lib/prompts/safety.js`). 어드민이 편집할 수 있는 건 `clinic_settings` / `clinic_faqs` 뿐.
+- **의료법 안전 가드레일 = 코드 단 고정** (`lib/prompts/safety/`). 진료과별 분리(`clinics.specialty` 컬럼이 `obgyn|internal|pediatric`을 키로). 어드민이 편집할 수 있는 건 `clinic_settings` / `clinic_faqs` 뿐.
 - **FAQ 섹션은 시스템 프롬프트의 `[답변 규칙]` 뒤**에 둠. 앞에 두면 모델이 FAQ의 친절-답변 패턴을 따라 안전 룰(증상 → STAFF_REQUIRED)을 무시함. 라벨링도 "[참고: 자주 묻는 질문] — [답변 규칙] 우선 적용".
 
 ## 작업 시 주의사항

@@ -26,6 +26,41 @@
 
 ---
 
+## 2026-05-27
+
+### safety.js 멀티 진료과화 — `safety/` 폴더 + `clinics.specialty`
+
+**계기**: 챗봇 가드레일(`lib/prompts/safety.js`)이 산부인과 전용으로 하드코딩돼 있어 비산부인과 병원에 챗봇을 팔 수 없던 문제. 데모 internal/pediatric 도 그동안 `chatbot_enabled=false` 였음. 이걸 풀어 일반 병원도 챗봇 작동하게.
+
+**결정** (사용자 선택)
+- 1차 지원 진료과: **산부인과 + 내과 + 소아청소년과** (데모 3종과 1:1).
+- 구조: **공통 + 진료과별 add-on**. `common.js`(진료과 무관 룰)와 specialty 모듈을 합성.
+- 진료과 데이터: **`clinics.specialty` 새 컬럼** (enum). 마이그레이션 1개로 명확하게.
+
+**한 것**
+- 마이그레이션 `20260527000000_add_specialty_to_clinics.sql` — `clinics.specialty text not null default 'obgyn' check (in ('obgyn','internal','pediatric'))`. demo-internal/pediatric specialty 채우고 `chatbot_enabled=true` 로 동시 전환. **Studio 적용 필요 — 미적용 시 buildPrompt 가 컬럼 없음으로 챗봇 깨짐.**
+- `lib/prompts/safety/` 폴더 분리 (옛 `lib/prompts/safety.js` 삭제):
+  - `common.js` — 룰 1~7 (응급/증상호소/예약/일반문의/단순인사/병원무관/회복가이드) + 공통 규칙 + 톤 가이드 + 기본 카테고리(예약·비용·증상·응급·수술회복·기타). warm/formal 두 톤. 객체로 섹션을 쪼개서 export — `{toneGuide, rulesPrefix, commonFooter, categoriesPrefix, categoriesExample}`.
+  - `obgyn.js` — 룰 8~14 (검사결과/검사정보/일반질병정보/증상+질병명/여성성형/피임생리임신/피부과) + 카테고리(여성성형·피부과·검사결과·질병정보). 기존 safety.js 내용 재배치.
+  - `internal.js` — 룰 8~13 (검사결과/검사정보: 혈액·심전도·내시경·당화혈색소·콜레스테롤/일반질병정보: 고혈압·당뇨·고지혈증·갑상선/증상+질병명/만성질환 약 처방·복약/성인 예방접종) + 카테고리(검사결과·질병정보·만성질환·예방접종).
+  - `pediatric.js` — 룰 8~13 (예방접종 일반정보: BCG·B형간염·DTaP·MMR 등 표준 일정/소아 흔한 질환: 수족구·중이염 등 일반정보/증상+질병명·진단/영유아 검진/성장발달/투약) + 카테고리(예방접종·질병정보·성장발달·영유아검진). 보호자 톤.
+  - `index.js` — `safetyRules({specialty, clinicName, bookingUrl, tone})` 진입점. specialty 모듈 맵 + common·specialty 합성 → 단일 시스템 프롬프트 텍스트.
+- `lib/prompts/buildPrompt.js` — clinics SELECT 에 `specialty` 추가, `safetyRules` 호출 시 specialty 전달. clinic.specialty 없으면 `'obgyn'` fallback.
+- `app/admin/page.js` — CATEGORIES + CATEGORY_STYLE 에 새 카테고리(검사결과·질병정보·만성질환·예방접종·성장발달·영유아검진) 추가. count 0 인 카테고리는 자동 숨김(`categoryCounts[cat] > 0` 가드 이미 있음)이라 union 방식으로 한 곳에 모음.
+- `app/api/chat/route.js` — chatbot 비활성 처리 주석을 "산부인과 전용이라" → "새 진료과는 모듈 추가 시까지" 로 갱신 (실제 동작 변화 없음).
+- CLAUDE.md / architecture.md — `safety.js` 단일 파일 → `safety/` 폴더 구조 반영.
+- `npm run build` 통과.
+
+**원칙 유지**: feedback_simplicity_principles — 거대한 abstraction 없음. 폴더 1개, 파일 5개, specialty 추가 시 파일 1개 + index.js 맵 1줄 + 마이그레이션 CHECK 갱신 1줄. 어드민 편집 가능 영역 확대 없음 (의료법 가드레일은 여전히 코드 단 고정).
+
+**배포 순서 주의**: `20260527000000` Studio 적용 → 그 다음 master 머지·배포. 순서 바뀌면 production 챗봇이 "컬럼 없음"으로 깨짐.
+
+**후속**:
+- 우림님이 demo-internal/pediatric 챗봇 응답 실제 테스트 (검사정보·예방접종·증상호소 시나리오).
+- 향후 새 진료과(정형외과·피부과 등) 추가는 `safety/{specialty}.js` + index.js + 마이그레이션 CHECK 갱신.
+
+---
+
 ## 2026-05-26
 
 ### 챗봇 링크 미리보기 — 병원별 동적 og:title

@@ -5,7 +5,28 @@ import PusherClient from "pusher-js";
 import { createClient } from "@/lib/supabase/client";
 import HeaderIcon from "./HeaderIcon";
 
-const CATEGORIES = ["전체", "예약/진료시간", "비용문의", "여성성형", "피부과", "증상문의", "수술회복", "기타"];
+// 진료과별 카테고리 union. count 0인 카테고리는 자동으로 숨겨지므로
+// (categoryCounts[cat] > 0 체크) 한 곳에 모아도 다른 병원에 노출 안 됨.
+const CATEGORIES = [
+  "전체",
+  "예약/진료시간",
+  "비용문의",
+  "증상문의",
+  "수술회복",
+  // 산부인과
+  "여성성형",
+  "피부과",
+  // 공통 의학 (산부인과·내과·소아과)
+  "검사결과",
+  "질병정보",
+  // 내과
+  "만성질환",
+  // 소아과
+  "예방접종",
+  "성장발달",
+  "영유아검진",
+  "기타",
+];
 
 const CATEGORY_STYLE = {
   "예약/진료시간": "bg-blue-100 text-blue-700",
@@ -14,6 +35,12 @@ const CATEGORY_STYLE = {
   "피부과": "bg-green-100 text-green-700",
   "증상문의": "bg-amber-100 text-amber-700",
   "수술회복": "bg-teal-100 text-teal-700",
+  "검사결과": "bg-indigo-100 text-indigo-700",
+  "질병정보": "bg-cyan-100 text-cyan-700",
+  "만성질환": "bg-rose-100 text-rose-700",
+  "예방접종": "bg-lime-100 text-lime-700",
+  "성장발달": "bg-orange-100 text-orange-700",
+  "영유아검진": "bg-sky-100 text-sky-700",
   "기타": "bg-gray-100 text-gray-600",
 };
 
