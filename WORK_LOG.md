@@ -28,6 +28,23 @@
 
 ## 2026-05-27
 
+### clinicScoped fail-fast 가드 — clinicId falsy 시 즉시 throw
+
+**계기**: 사용자 코드 리뷰 — `clinicScoped(service, table, clinicId)` 가 `clinicId` 를 검사 없이 그대로 `.eq("clinic_id", clinicId)` 에 흘려보냈음. PostgREST 가 `undefined` 를 받으면 필터가 누락되어 cross-tenant 노출 가능 + INSERT 시 `clinic_id NULL` 고아 행 생성 가능. service_role 이라 RLS 가 안 잡으므로 코드 단 가드 필수.
+
+**한 것** (`lib/db/clinicScoped.js`)
+- 함수 최상단에 가드 클로즈 추가:
+  ```js
+  if (!clinicId) {
+    throw new Error("clinicScoped: clinicId is required and cannot be null/undefined.");
+  }
+  ```
+- `!clinicId` 라 undefined/null/`""`/0/false 모두 throw — UUID·정수 PK 둘 다 falsy 비교로 충분.
+- 호출부 5곳(chat/route.js, clinic-faqs POST/PUT/DELETE, recovery-guides POST/PUT/DELETE) 전부 이미 `if (!clinic)` 가드를 `clinicScoped()` 호출 **전**에 두고 있어 회귀 없음. 이번 변경은 순수 방어층 추가 (depth-in-defense).
+- 검증: 노드 스크립트로 undefined/null/""/0 → throw 확인, UUID/정수 → 통과 확인. `npm run build` 통과.
+
+**효과**: 향후 새 라우트 작성 시 caller 가 `clinic.id` 대신 `clinic?.id` 같은 실수를 해도 production 에서 데이터 노출되기 전에 500 에러로 즉시 차단. 사일런트 실패 → 명시적 실패 전환.
+
 ### chat/route.js 개인정보 마스킹 리팩토링 — g 플래그 버그 + 패턴 강화
 
 **계기**: 사용자 코드 리뷰 — `PERSONAL_INFO_PATTERNS`의 정규식들에 `g` 플래그가 붙어 있어 `.test()` 호출이 stateful(lastIndex 유지) 버그. 같은 텍스트로 연속 `.test()` 시 두 번째에 false가 반환되어 차단 우회 가능. 동시에 `maskPersonalInfo`가 같은 패턴을 하드코딩해 중복 보유 + 패턴 자체가 좁음(휴대폰만/주민번호 1-4만/4자리 연도만).
