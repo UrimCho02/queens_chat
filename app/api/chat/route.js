@@ -26,29 +26,42 @@ function resolveClinicSlug(value) {
     : DEFAULT_CLINIC_SLUG;
 }
 
+// 개인정보 정규식 — containsPersonalInfo / maskPersonalInfo 공유.
+// g 플래그를 의도적으로 빼둠. RegExp 객체에 g 플래그가 있으면 .test() 가 stateful
+// 이라(호출 간 lastIndex 유지) 같은 텍스트를 연속 검사할 때 두 번째에 false 가
+// 반환되는 함정이 있음. 마스킹할 때만 new RegExp(p, "g") 로 g 를 동적으로 붙여
+// .replace() 가 모든 매치를 치환하게 함.
+// 순서 주의: SSN 을 phone 보다 먼저. 무구분자 13자리(예: 9001011234567)에서
+// phone 패턴이 안쪽 10자리를 먼저 가로채는 것을 막기 위함.
 const PERSONAL_INFO_PATTERNS = {
-  phone: /01[0-9][-\s]?\d{3,4}[-\s]?\d{4}/g,
-  ssn: /\d{6}[-\s]?[1-4]\d{6}/g,
-  birthdate: /(19|20)\d{2}[-./\s]?(0[1-9]|1[0-2])[-./\s]?(0[1-9]|[12]\d|3[01])/g,
-  // 한글 이름 (2~4자)는 너무 광범위해서 "제 이름은", "이름:", "성함:" 등 명시적 키워드 뒤에서만 감지
-  name: /(제\s*이름은|이름은|성함은|이름\s*[:：]|성함\s*[:：])\s*([가-힣]{2,4})/g,
+  // 주민번호(뒷자리 1-4) + 외국인등록번호(뒷자리 5-8). 구분자 -, ., \s
+  ssn: /\d{6}[-.\s]?[1-8]\d{6}/,
+  // 휴대폰(01x) + 유선 02 + 유선 0[3-6]x. 구분자 -, ., \s
+  phone: /0(2|[3-6][0-9]|1[0-9])[-.\s]?\d{3,4}[-.\s]?\d{4}/,
+  // 4자리 연도(19xx/20xx) 또는 2자리 연도. 구분자 -, ., /, \s, 또는 한글 년/월/일
+  birthdate: /(?:(?:19|20)\d{2}|\d{2})[-./\s년]\s?(?:1[0-2]|0?[1-9])[-./\s월]\s?(?:3[01]|[12]\d|0?[1-9])일?/,
+  // 한글 이름 (2~4자)는 너무 광범위해서 명시적 키워드 뒤에서만 감지.
+  // 더 구체적인 키워드("환자 이름은" 등)를 더 일반적인 것("이름은") 앞에 둠 — 알터네이션 좌->우 우선.
+  name: /(제\s*이름은|환자\s*이름은|예약자\s*이름은|이름은|성함은|예약자는|환자는|이름\s*[:：]|성함\s*[:：]|예약자\s*[:：]|환자\s*[:：])\s*([가-힣]{2,4})/,
+};
+
+// 마스킹 라벨. name 만 키워드 캡처를 보존하기 위해 $1 백레퍼런스 사용.
+const MASK_LABELS = {
+  phone: "[전화번호]",
+  ssn: "[주민번호]",
+  birthdate: "[생년월일]",
+  name: "$1 [이름]",
 };
 
 function containsPersonalInfo(text) {
-  return (
-    PERSONAL_INFO_PATTERNS.phone.test(text) ||
-    PERSONAL_INFO_PATTERNS.ssn.test(text) ||
-    PERSONAL_INFO_PATTERNS.birthdate.test(text) ||
-    PERSONAL_INFO_PATTERNS.name.test(text)
-  );
+  return Object.values(PERSONAL_INFO_PATTERNS).some((p) => p.test(text));
 }
 
 function maskPersonalInfo(text) {
   let masked = text;
-  masked = masked.replace(/01[0-9][-\s]?\d{3,4}[-\s]?\d{4}/g, "[전화번호]");
-  masked = masked.replace(/\d{6}[-\s]?[1-4]\d{6}/g, "[주민번호]");
-  masked = masked.replace(/(19|20)\d{2}[-./\s]?(0[1-9]|1[0-2])[-./\s]?(0[1-9]|[12]\d|3[01])/g, "[생년월일]");
-  masked = masked.replace(/(제\s*이름은|이름은|성함은|이름\s*[:：]|성함\s*[:：])\s*([가-힣]{2,4})/g, "$1 [이름]");
+  for (const [key, pattern] of Object.entries(PERSONAL_INFO_PATTERNS)) {
+    masked = masked.replace(new RegExp(pattern, "g"), MASK_LABELS[key]);
+  }
   return masked;
 }
 
