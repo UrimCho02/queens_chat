@@ -3,6 +3,11 @@ import Pusher from "pusher";
 import { createServiceClient } from "@/lib/supabase/service";
 import { buildPrompt } from "@/lib/prompts/buildPrompt";
 import { clinicScoped } from "@/lib/db/clinicScoped";
+import { getRequestHost, isOriginAllowed } from "@/lib/security/domainAllowlist";
+
+// 미허용 도메인 차단 응답 (fail-fast).
+const forbiddenResponse = () =>
+  Response.json({ error: "허용되지 않은 접근입니다." }, { status: 403 });
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -89,9 +94,14 @@ export async function GET(request) {
   );
   const { data: clinic } = await supabase
     .from("clinics")
-    .select("id, name, phone, chatbot_enabled, template, logo_url")
+    .select("id, name, phone, chatbot_enabled, template, logo_url, allowed_domains")
     .eq("slug", slug)
     .single();
+
+  // 도메인 화이트리스트 검사 — 위젯 무단 임베드 차단 (allowed_domains 설정 시에만).
+  if (!isOriginAllowed(getRequestHost(request), clinic?.allowed_domains)) {
+    return forbiddenResponse();
+  }
 
   let currentEvent = "";
   let eventImageUrl = "";
@@ -163,7 +173,7 @@ export async function POST(request) {
     // 병원 lookup (id, phone 필요)
     const { data: clinic, error: clinicError } = await supabase
       .from("clinics")
-      .select("id, phone, chatbot_enabled")
+      .select("id, phone, chatbot_enabled, allowed_domains")
       .eq("slug", slug)
       .single();
 
@@ -173,6 +183,11 @@ export async function POST(request) {
         { error: "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." },
         { status: 500 }
       );
+    }
+
+    // 도메인 화이트리스트 검사 — 위젯 무단 임베드 차단 (allowed_domains 설정 시에만).
+    if (!isOriginAllowed(getRequestHost(request), clinic.allowed_domains)) {
+      return forbiddenResponse();
     }
 
     // 이후 inquiries 조회/저장은 모두 이 헬퍼로 — clinic_id 누락/오기입 구조적 차단.

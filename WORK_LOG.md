@@ -28,6 +28,34 @@
 
 ## 2026-06-01
 
+### 도메인 화이트리스트 (위젯 무단 임베드 API abuse 방지) — 1차 + frame-ancestors
+
+**계기**: 챗봇 위젯이 무단으로 타 사이트에 임베드되어 ANTHROPIC API 비용이 소모되는 것을 막기 위한 보안 기능 요청.
+
+**구조 발견(중요)**: 위젯은 `<iframe src="queens-chat.vercel.app/?clinic=...">` 임베드라, iframe 안 `/api/chat` 호출의 Origin/Referer 는 부모 사이트가 아니라 iframe 출처(vercel.app)로 잡힘. 그래서 **API Origin 검사만으로는 iframe 무단 임베드를 못 막음**. 2개 층으로 구현:
+- (1) **API Origin 검사** — 직접 cross-origin API 스크립트 abuse 차단.
+- (2) **frame-ancestors CSP** — iframe 무단 임베드의 실효 차단(미허용 부모에선 브라우저가 iframe 렌더링 거부 → API 호출 0). **이게 진짜 해결책.**
+
+**한 것 — (1) API Origin 검사**
+- 마이그레이션 `20260601000100_add_allowed_domains_to_clinics.sql` — `clinics.allowed_domains text[] not null default '{}'`. 비어있으면 제한 없음(기존 병원 영향 0). **⚠️ Studio 적용 먼저 → 그 다음 배포** (route 가 컬럼 SELECT 하므로 순서 바뀌면 챗봇 깨짐).
+- `lib/security/domainAllowlist.js` (신규) — 순수 함수 `getRequestHost` / `isOriginAllowed`. origin→referer 순 호스트 추출, 정규화(스킴/경로/포트 제거), 정확일치 + 서브도메인 매칭. localhost/127.0.0.1/*.vercel.app + origin 없음 → 예외 허용. 빈 화이트리스트 → 제한 없음.
+- `app/api/chat/route.js` — GET/POST 둘 다 clinic SELECT 에 `allowed_domains` 추가, clinic 조회 직후 `isOriginAllowed` 검사 → 미허용 시 `forbiddenResponse()` = HTTP 403 + "허용되지 않은 접근입니다." (fail-fast).
+- `scripts/test-origin-allowlist.mjs` (신규) — 순수 로직 단위 테스트 19종. 부분문자열·접미사 위장 차단 포함. **19/19 PASS**.
+
+**한 것 — (2) frame-ancestors CSP (실효 차단)**
+- `lib/security/frameAncestors.js` (신규) — `buildFrameAncestors(allowedDomains)`. 기본 허용 부모: `'self'`(홈페이지=같은 출처) + `clinictalk.kr`·`*.clinictalk.kr`(랜딩/서브도메인) + `*.vercel.app`(배포). 병원 allowed_domains 는 `https://<도메인>` + `https://*.<도메인>` 로 더함. `normalizeDomain` 은 domainAllowlist.js 에서 export 해 재사용(DRY).
+- `proxy.js` — 미들웨어 matcher 에 `/` 추가. `chatbotFrameGuard(request)` 신규: 챗봇 페이지(`/`) 요청은 인증 흐름 건너뛰고, slug 해석(`resolveSlugFromRequest`) → service_role 로 allowed_domains 조회 → `Content-Security-Policy: frame-ancestors ...` 응답 헤더 세팅. **조회 실패(컬럼 없음 등) 시에도 기본 출처만으로 헤더 세팅** → 외부 임베드 기본 차단(fail-safe).
+- 라이브 검증: dev 서버 curl — `/?clinic=thequeens`·`/?clinic=demo-obgyn` 응답에 `frame-ancestors 'self' https://clinictalk.kr https://*.clinictalk.kr https://*.vercel.app` 확인. `/admin` 엔 CSP 없음(정상). 병원별 도메인 append 는 마이그레이션 적용 후 라이브 재확인 예정.
+- `npm run build` 통과.
+
+**동작 변화(안전)**: 이제 챗봇 페이지는 우리 자산(self/clinictalk.kr/vercel) + 병원 등록 도메인 외 사이트에서 iframe 임베드 불가. 현재 합법 임베드(홈페이지=self, 랜딩=clinictalk.kr)는 전부 기본 목록에 포함돼 안 깨짐. 직접 페이지 접속(프레임 아님)은 frame-ancestors 무관 — 영향 없음.
+
+**⚠️ 배포 순서**: `20260601000100` 마이그레이션을 Studio 적용 **먼저** → 그 다음 코드 배포. (route 와 proxy 둘 다 `allowed_domains` SELECT. 컬럼 없으면 route 는 챗봇 깨지고, proxy 는 fail-safe 라 기본 CSP 로 버티지만 순서 지키는 게 안전.)
+
+**후속(미구현)**:
+- 병원별 도메인 append 라이브 검증 — 마이그레이션 적용 후 데모 1곳 allowed_domains 세팅하고 CSP 헤더 재확인.
+- allowed_domains 편집 어드민 UI — 지금은 SQL UPDATE 로 세팅(마이그레이션 주석에 예시). 고객 늘면 superadmin/admin 폼 검토.
+
 ### 데모 챗봇(내과·소아과) 가드레일 테스트 + 다듬기 2건
 
 **계기**: 2026-05-27 에 demo-internal/demo-pediatric 챗봇을 켰지만(specialty 분리) 실제 응답 검증을 안 했음. 영업 데모로 쓰는 만큼 의료법 가드가 제대로 거는지 end-to-end 확인 필요.
